@@ -1,0 +1,20 @@
+{
+    "java.project.sourcePaths": [
+        "BO-location\\src\\main\\java"
+    ],
+    "java.project.referencedLibraries": [
+        "BO-location\\lib\\gson-2.13.2.jar",
+        "BO-location\\lib\\jakarta.ejb-api-4.0.1.jar",
+        "BO-location\\lib\\jakarta.persistence-api-3.1.0.jar",
+        "BO-location\\lib\\jakarta.servlet-api-5.0.0.jar",
+        "BO-location\\lib\\jakarta.transaction-api-2.0.1.jar",
+        "BO-location\\lib\\jakarta.ws.rs-api-3.1.0.jar",
+        "BO-location\\lib\\jbcrypt-0.4.jar",
+        "BO-location\\lib\\json-simple-1.1.1.jar",
+        "BO-location\\lib\\mini-framework.jar",
+        "BO-location\\lib\\mysql-connector-j-8.3.0.jar",
+        "BO-location\\lib\\ojdbc6.jar",
+        "BO-location\\lib\\postgresql-42.7.4.jar",
+        "BO-location\\lib\\servlet-api.jar"
+    ]
+}
