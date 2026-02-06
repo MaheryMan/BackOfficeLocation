@@ -1,6 +1,8 @@
 package service;
 
 import database.ConnexDB;
+import model.Client;
+import model.Hotel;
 import model.Reservation;
 
 import java.sql.*;
@@ -9,15 +11,18 @@ import java.util.List;
 
 public class ReservationService {
     
+    private final ClientService clientService = new ClientService();
+    private final HotelService hotelService = new HotelService();
+    
     public void create(Reservation reservation) throws SQLException {
         String sql = "INSERT INTO reservation (id_client, id_hotel, date_heure_arrivee, nombre_passager) VALUES (?, ?, ?, ?)";
         
         try (Connection conn = ConnexDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
-            stmt.setInt(1, reservation.getIdClient());
-            stmt.setInt(2, reservation.getIdHotel());
-            stmt.setTimestamp(3, reservation.getDateHeureArrivee());
+            stmt.setInt(1, reservation.getClient().getId());
+            stmt.setInt(2, reservation.getHotel().getId());
+            stmt.setTimestamp(3, parseTimestamp(reservation.getDateHeureArrivee()));
             stmt.setInt(4, reservation.getNombrePassager());
             
             stmt.executeUpdate();
@@ -40,11 +45,14 @@ public class ReservationService {
             ResultSet rs = stmt.executeQuery();
             
             if (rs.next()) {
+                Client client = clientService.read(rs.getInt("id_client"));
+                Hotel hotel = hotelService.read(rs.getInt("id_hotel"));
+                
                 reservation = new Reservation(
                     rs.getInt("id"),
-                    rs.getInt("id_client"),
-                    rs.getInt("id_hotel"),
-                    rs.getTimestamp("date_heure_arrivee"),
+                    client,
+                    hotel,
+                    timestampToString(rs.getTimestamp("date_heure_arrivee")),
                     rs.getInt("nombre_passager")
                 );
             }
@@ -61,11 +69,14 @@ public class ReservationService {
              ResultSet rs = stmt.executeQuery(sql)) {
             
             while (rs.next()) {
+                Client client = clientService.read(rs.getInt("id_client"));
+                Hotel hotel = hotelService.read(rs.getInt("id_hotel"));
+                
                 Reservation reservation = new Reservation(
                     rs.getInt("id"),
-                    rs.getInt("id_client"),
-                    rs.getInt("id_hotel"),
-                    rs.getTimestamp("date_heure_arrivee"),
+                    client,
+                    hotel,
+                    timestampToString(rs.getTimestamp("date_heure_arrivee")),
                     rs.getInt("nombre_passager")
                 );
                 reservations.add(reservation);
@@ -80,9 +91,9 @@ public class ReservationService {
         try (Connection conn = ConnexDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
-            stmt.setInt(1, reservation.getIdClient());
-            stmt.setInt(2, reservation.getIdHotel());
-            stmt.setTimestamp(3, reservation.getDateHeureArrivee());
+            stmt.setInt(1, reservation.getClient().getId());
+            stmt.setInt(2, reservation.getHotel().getId());
+            stmt.setTimestamp(3, parseTimestamp(reservation.getDateHeureArrivee()));
             stmt.setInt(4, reservation.getNombrePassager());
             stmt.setInt(5, reservation.getId());
             
@@ -99,5 +110,23 @@ public class ReservationService {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         }
+    }
+
+    private Timestamp parseTimestamp(String dateTimeValue) {
+        if (dateTimeValue == null || dateTimeValue.isBlank()) {
+            return null;
+        }
+        String normalized = dateTimeValue.replace("T", " ");
+        if (normalized.length() == 16) {
+            normalized = normalized + ":00";
+        }
+        return Timestamp.valueOf(normalized);
+    }
+
+    private String timestampToString(Timestamp timestamp) {
+        if (timestamp == null) {
+            return null;
+        }
+        return timestamp.toString();
     }
 }

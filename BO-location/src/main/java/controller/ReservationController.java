@@ -13,7 +13,6 @@ import service.ReservationService;
 import util.ModelView;
 
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +46,9 @@ public class ReservationController {
     ) throws SQLException {
         Reservation reservation = new Reservation(
                 null,
-                idClient,
-                idHotel,
-                parseTimestamp(dateHeureArrivee),
+                clientService.read(idClient),
+                hotelService.read(idHotel),
+                dateHeureArrivee,
                 nombrePassager
         );
         reservationService.create(reservation);
@@ -67,9 +66,9 @@ public class ReservationController {
     ) throws SQLException {
         Reservation reservation = new Reservation(
                 id,
-                idClient,
-                idHotel,
-                parseTimestamp(dateHeureArrivee),
+                clientService.read(idClient),
+                hotelService.read(idHotel),
+                dateHeureArrivee,
                 nombrePassager
         );
         reservationService.update(reservation);
@@ -103,9 +102,9 @@ public class ReservationController {
     ) throws SQLException {
         Reservation reservation = new Reservation(
                 null,
-                idClient,
-                idHotel,
-                parseTimestamp(dateHeureArrivee),
+                clientService.read(idClient),
+                hotelService.read(idHotel),
+                dateHeureArrivee,
                 nombrePassager
         );
         reservationService.create(reservation);
@@ -115,16 +114,5 @@ public class ReservationController {
         view.addObject("hotels", hotelService.readAll());
         view.addObject("message", "Reservation ajoutee");
         return view;
-    }
-
-    private Timestamp parseTimestamp(String dateTimeValue) {
-        if (dateTimeValue == null || dateTimeValue.isBlank()) {
-            return null;
-        }
-        String normalized = dateTimeValue.replace("T", " ");
-        if (normalized.length() == 16) {
-            normalized = normalized + ":00";
-        }
-        return Timestamp.valueOf(normalized);
     }
 }

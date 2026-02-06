@@ -7,6 +7,6 @@
 </head>
 <body>
     <h1>Bienvenue sur BO-location</h1>
-    <a href="NewServlet">Aller vers NewServlet</a>
+    <a href="/reservations/form">Ajouter un reservation</a>
 </body>
 </html>

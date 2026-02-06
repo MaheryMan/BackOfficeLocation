@@ -1,19 +1,16 @@
 package model;
 
 import annotations.BaseName;
-import java.sql.Timestamp;
 
 public class Reservation {
     private Integer id;
     
-    @BaseName("id_client")
-    private Integer idClient;
+    private Client client;
     
-    @BaseName("id_hotel")
-    private Integer idHotel;
+    private Hotel hotel;
     
     @BaseName("date_heure_arrivee")
-    private Timestamp dateHeureArrivee;
+    private String dateHeureArrivee;
     
     @BaseName("nombre_passager")
     private Integer nombrePassager;
@@ -21,10 +18,10 @@ public class Reservation {
     public Reservation() {
     }
 
-    public Reservation(Integer id, Integer idClient, Integer idHotel, Timestamp dateHeureArrivee, Integer nombrePassager) {
+    public Reservation(Integer id, Client client, Hotel hotel, String dateHeureArrivee, Integer nombrePassager) {
         this.id = id;
-        this.idClient = idClient;
-        this.idHotel = idHotel;
+        this.client = client;
+        this.hotel = hotel;
         this.dateHeureArrivee = dateHeureArrivee;
         this.nombrePassager = nombrePassager;
     }
@@ -37,27 +34,27 @@ public class Reservation {
         this.id = id;
     }
 
-    public Integer getIdClient() {
-        return idClient;
+    public Client getClient() {
+        return client;
     }
 
-    public void setIdClient(Integer idClient) {
-        this.idClient = idClient;
+    public void setClient(Client client) {
+        this.client = client;
     }
 
-    public Integer getIdHotel() {
-        return idHotel;
+    public Hotel getHotel() {
+        return hotel;
     }
 
-    public void setIdHotel(Integer idHotel) {
-        this.idHotel = idHotel;
+    public void setHotel(Hotel hotel) {
+        this.hotel = hotel;
     }
 
-    public Timestamp getDateHeureArrivee() {
+    public String getDateHeureArrivee() {
         return dateHeureArrivee;
     }
 
-    public void setDateHeureArrivee(Timestamp dateHeureArrivee) {
+    public void setDateHeureArrivee(String dateHeureArrivee) {
         this.dateHeureArrivee = dateHeureArrivee;
     }
 
@@ -73,8 +70,8 @@ public class Reservation {
     public String toString() {
         return "Reservation{" +
                 "id=" + id +
-                ", idClient=" + idClient +
-                ", idHotel=" + idHotel +
+                ", client=" + client +
+                ", hotel=" + hotel +
                 ", dateHeureArrivee=" + dateHeureArrivee +
                 ", nombrePassager=" + nombrePassager +
                 '}';
