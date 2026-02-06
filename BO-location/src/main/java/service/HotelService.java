@@ -9,9 +9,7 @@ import java.util.List;
 
 public class HotelService {
     
-    /**
-     * Créer un nouveau hotel
-     */
+
     public void create(Hotel hotel) throws SQLException {
         String sql = "INSERT INTO hotel (nom, distance_aeroport) VALUES (?, ?)";
         
@@ -29,10 +27,7 @@ public class HotelService {
             }
         }
     }
-    
-    /**
-     * Lire un hotel par son ID
-     */
+
     public Hotel read(int id) throws SQLException {
         String sql = "SELECT * FROM hotel WHERE id = ?";
         Hotel hotel = null;
@@ -53,10 +48,7 @@ public class HotelService {
         }
         return hotel;
     }
-    
-    /**
-     * Lire tous les hotels
-     */
+
     public List<Hotel> readAll() throws SQLException {
         String sql = "SELECT * FROM hotel";
         List<Hotel> hotels = new ArrayList<>();
@@ -76,10 +68,7 @@ public class HotelService {
         }
         return hotels;
     }
-    
-    /**
-     * Mettre à jour un hotel
-     */
+
     public void update(Hotel hotel) throws SQLException {
         String sql = "UPDATE hotel SET nom = ?, distance_aeroport = ? WHERE id = ?";
         
@@ -93,10 +82,7 @@ public class HotelService {
             stmt.executeUpdate();
         }
     }
-    
-    /**
-     * Supprimer un hotel
-     */
+
     public void delete(int id) throws SQLException {
         String sql = "DELETE FROM hotel WHERE id = ?";
         
