@@ -1,0 +1,24 @@
+ETU  
+3080 TL  
+3185 BO  
+2530 FO  
+------------------------------------------------------------------------  
+Script insertion Hotel + Client √  
+Adapter le script de deployement vers tomcat (local) √  
+Ajout jar postgres √  
+Connexion base postgres √  
+Models Hotel, Client, Reservation √  
+GetAll : Hotel + Client √  
+CRUD Reservation + Formulaire insertion √  
+Exposition list Reservation (utiliser @Controller et @RestAPI) √  
+Initialisation projet spring √  
+Creation DTos pour JSON √  
+Page list Reservation √  
+.  
+.  
+.  
+.  
+.  
+Merge request Main  
+Test staging, release, prod  
+Deployement Railway rehefa ok
