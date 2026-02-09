@@ -8,7 +8,7 @@ public class ConnexDB {
     
     private static final String URL = "jdbc:postgresql://localhost:5432/location_S5";
     private static final String USER = "postgres";
-    private static final String PASSWORD = "max";
+    private static final String PASSWORD = "postgres";
     
     private static Connection connection = null;
 
