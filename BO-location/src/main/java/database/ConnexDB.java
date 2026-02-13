@@ -1,31 +1,47 @@
 package database;
 
+import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConnexDB {
-    
-    private static final String URL = "jdbc:postgresql://localhost:5432/location_s5";
-    private static final String USER = "postgres";
-    private static final String PASSWORD = "karen";
-    
     private static Connection connection = null;
 
     public static Connection getConnection() {
         try {
             if (connection == null || connection.isClosed()) {
+
                 Class.forName("org.postgresql.Driver");
-                connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                System.out.println("Connexion à la base de donnees location_S5 etablie avec succes!");
+
+                String databaseUrl = System.getenv("DATABASE_URL");
+
+                // CAS LOCAL (si DATABASE_URL n'existe pas)
+                if (databaseUrl == null) {
+                    String url = "jdbc:postgresql://localhost:5432/location_S5";
+                    String user = "postgres";
+                    String password = "max";
+                    connection = DriverManager.getConnection(url, user, password);
+                }
+                // CAS HEROKU
+                else {
+                    URI dbUri = new URI(databaseUrl);
+
+                    String user = dbUri.getUserInfo().split(":")[0];
+                    String password = dbUri.getUserInfo().split(":")[1];
+                    String url = "jdbc:postgresql://" + dbUri.getHost() + ":" + dbUri.getPort()
+                            + dbUri.getPath() + "?sslmode=require";
+
+                    connection = DriverManager.getConnection(url, user, password);
+                }
+
+                System.out.println("Connexion PostgreSQL établie !");
             }
-        } catch (ClassNotFoundException e) {
-            System.err.println("Driver PostgreSQL non trouve: " + e.getMessage());
-            e.printStackTrace();
-        } catch (SQLException e) {
-            System.err.println("Erreur de connexion à la base de donnees: " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Erreur connexion DB : " + e.getMessage());
             e.printStackTrace();
         }
+
         return connection;
     }
 
@@ -33,21 +49,10 @@ public class ConnexDB {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
-                System.out.println("Connexion fermee.");
+                System.out.println("Connexion fermée.");
             }
         } catch (SQLException e) {
-            System.err.println("Erreur lors de la fermeture de la connexion: " + e.getMessage());
             e.printStackTrace();
-        }
-    }
-
-    public static void main(String[] args) {
-        Connection conn = getConnection();
-        if (conn != null) {
-            System.out.println("Test de connexion reussi!");
-            closeConnection();
-        } else {
-            System.out.println("echec du test de connexion.");
         }
     }
 }
