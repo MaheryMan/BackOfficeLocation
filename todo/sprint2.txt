@@ -1,8 +1,8 @@
-SPRINT 2 - CRUD VOITURE (BACKOFFICE)
+SPRINT 2 - CRUD VOITURE + PROTECTION API (BACKOFFICE)
 Date: 13/02/2026
 
 =========================
-ETU
+PORTS
 =========================
 - BackOffice (BO):  3080
 - Transport Layer (TL): 3185
@@ -12,18 +12,25 @@ ETU
 OBJECTIFS
 =========================
 1. Créer le CRUD complet de Voiture (BackOffice)
-   - Modèle Voiture.java
-   - Service VoitureService.java (Create, Read, Update, Delete)
-   - Controller VoitureController.java
-   - JSP pour l'interface utilisateur
+   - Modèle Voiture.java ✓
+   - Service VoitureService.java (Create, Read, Update, Delete) ✓
+   - Controller VoitureController.java ✓
+   - JSP pour l'interface utilisateur ✓
 
 2. Gestion de TypeEnergie
-   - Types: Diesel, Essence, Electrique, Hybride
-   - Relation avec Voiture via id_type_energie
+   - Types: Diesel, Essence, Electrique, Hybride ✓
+   - Relation avec Voiture via id_type_energie ✓
 
-3. API pour FrontOffice
+3. Protection des API Reservations
+   - Système de tokens pour authentification ✓
+   - Table token en base de données ✓
+   - Validation des tokens sur les API /api/reservations/* ✓
+   - Tokens réutilisables avec expiration ✓
+
+4. API pour FrontOffice
    - Le FrontOffice récupère les données via API REST
    - BackOffice expose les endpoints nécessaires
+   - Authentification requise pour les API réservations
 
 =========================
 STRUCTURE DB
@@ -38,11 +45,56 @@ Table: type_energie
 - id (SERIAL PRIMARY KEY)
 - libelle (VARCHAR UNIQUE)
 
+Table: token
+- id (SERIAL PRIMARY KEY)
+- token (VARCHAR UNIQUE)
+- date_heure_expiration (TIMESTAMP NOT NULL)
+
 =========================
-FONCTIONNALITÉS
+FONCTIONNALITÉS VOITURE
 =========================
-[ ] Liste de toutes les voitures
-[ ] Ajouter une voiture
-[ ] Modifier une voiture
-[ ] Supprimer une voiture
-[ ] Filtrer par type d'énergie
+[✓] Liste de toutes les voitures
+[✓] Ajouter une voiture
+[✓] Modifier une voiture
+[✓] Supprimer une voiture
+[✓] Filtrer par type d'énergie
+
+=========================
+PROTECTION API
+=========================
+[✓] Table token créée
+[✓] Model Token.java
+[✓] Service TokenService.java
+[✓] Génération de tokens aléatoires (hash 64 caractères)
+[✓] Main Java pour générer 2 tokens initiaux (expiration: 17/02/2026 12h)
+[✓] API publique: GET /api/token?days=7 (génère nouveau token)
+[✓] Protection API /api/reservations/* avec validation token
+[✓] Exception UnauthorizedException (erreur 401)
+
+=========================
+UTILISATION API PROTÉGÉES
+=========================
+Toutes les requêtes vers /api/reservations/* nécessitent un paramètre token:
+
+Exemples:
+- GET  /api/reservations?token=xxx
+- GET  /api/reservations/1?token=xxx
+- POST /api/reservations?token=xxx&idClient=1&idHotel=2&...
+- POST /api/reservations/1?token=xxx&idClient=1&...
+- POST /api/reservations/1/delete?token=xxx
+
+Pour obtenir un token:
+- GET /api/token (défaut: 7 jours de validité)
+- GET /api/token?days=30 (validité personnalisée)
+
+Pour générer les tokens initiaux:
+- Exécuter: java util.GenerateTokensMain
+
+=========================
+STRUCTURE PAGES
+=========================
+Pages organisées par fonctionnalité:
+- webapp/voitures/list.jsp (liste des voitures)
+- webapp/voitures/form.jsp (ajout/modification)
+- webapp/reservations/form.jsp (formulaire réservation)
+- webapp/index.jsp (page d'accueil avec menu)
