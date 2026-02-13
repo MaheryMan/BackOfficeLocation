@@ -1,0 +1,48 @@
+SPRINT 2 - CRUD VOITURE (BACKOFFICE)
+Date: 13/02/2026
+
+=========================
+ETU
+=========================
+- BackOffice (BO):  3080
+- Transport Layer (TL): 3185
+- FrontOffice (FO): 2530
+
+=========================
+OBJECTIFS
+=========================
+1. Créer le CRUD complet de Voiture (BackOffice)
+   - Modèle Voiture.java
+   - Service VoitureService.java (Create, Read, Update, Delete)
+   - Controller VoitureController.java
+   - JSP pour l'interface utilisateur
+
+2. Gestion de TypeEnergie
+   - Types: Diesel, Essence, Electrique, Hybride
+   - Relation avec Voiture via id_type_energie
+
+3. API pour FrontOffice
+   - Le FrontOffice récupère les données via API REST
+   - BackOffice expose les endpoints nécessaires
+
+=========================
+STRUCTURE DB
+=========================
+Table: voiture
+- id (SERIAL PRIMARY KEY)
+- numero (VARCHAR UNIQUE)
+- id_type_energie (INT FK -> type_energie)
+- capacite (INT, > 0)
+
+Table: type_energie
+- id (SERIAL PRIMARY KEY)
+- libelle (VARCHAR UNIQUE)
+
+=========================
+FONCTIONNALITÉS
+=========================
+[ ] Liste de toutes les voitures
+[ ] Ajouter une voiture
+[ ] Modifier une voiture
+[ ] Supprimer une voiture
+[ ] Filtrer par type d'énergie

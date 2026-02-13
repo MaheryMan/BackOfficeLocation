@@ -87,7 +87,7 @@ public class ReservationController {
 
     @Get("/reservations/form")
     public ModelView reservationForm() throws SQLException {
-        ModelView view = new ModelView("WEB-INF/reservation-form.jsp");
+        ModelView view = new ModelView("reservations/form");
         view.addObject("clients", clientService.readAll());
         view.addObject("hotels", hotelService.readAll());
         return view;
@@ -109,7 +109,7 @@ public class ReservationController {
         );
         reservationService.create(reservation);
 
-        ModelView view = new ModelView("WEB-INF/reservation-form.jsp");
+        ModelView view = new ModelView("reservations/form");
         view.addObject("clients", clientService.readAll());
         view.addObject("hotels", hotelService.readAll());
         view.addObject("message", "Reservation ajoutee");
