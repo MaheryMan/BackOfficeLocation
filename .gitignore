@@ -1,4 +1,45 @@
+# Build directories
 BO-location/deploy.sh
 BO-location/build
-.vscode/settings.json
 BO-location/deploy.bat
+BO-location/target/
+target/
+
+# IDE
+.vscode/settings.json
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Maven
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Java
+*.class
+*.jar
+!BO-location/lib/*.jar
+*.war
+*.ear
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
