@@ -1,0 +1,28 @@
+Param 
+Vitesse Moyenne 
+Temps d'attente : vol arrive + temps d'attente = temps depart de la resa pour la voiture
+
+a preparer:
+mila script de renitialisation
+Table apina : distance ( from , to , km)
+lieu( libelle, code)
+Objectif: planifier cette date 
+Mila interface : param date -> planification :(list trajet) ity Vehicule ity liee @ resa , 
+date depart , misy lieu (colbert..), date arrivee (possible mbola miverina, 
+fa atreto lo mbola tsy misy)
+ex: Vehicule 
+11 D
+8 E
+Regle gestion:
+-Raha misy resa @ date 1 , tsy azo separena ny olona ( ex , vehicule 11 et 7 place , 
+misy olona manao res 8 places , ilay 11 no appidirana azy fa tsy sarahana) capacite.vehicule > np passager
+-Izay manakaiky ny nombre anle passager ny capacite vehicule no assignena anle olona 
+-Raha misy mitovy : Dia izay diesel no omena azy 
+Raha samy diesel ilay voiture dia random izy atreto 
+(Plus tard , izay mbola vehicule kely trajet)
+-Mbola tsy considerena temps d'attente eto
+
+Interface afa : Liste reservation tsy ahitana fiara associe aminy
+
+
+.....sprint 4 [Raha misy lieu maromaro mila andeanana , izay akaiky ndrindra aeroport no andeanana]
