@@ -6,6 +6,18 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConnexDB {
+    
+    // Configuration depuis les variables d'environnement ou valeurs par défaut pour dev local
+    private static final String URL = System.getenv("DATABASE_URL") != null 
+        ? System.getenv("DATABASE_URL") 
+        : "jdbc:postgresql://localhost:5432/location_S5";
+    private static final String USER = System.getenv("DATABASE_USER") != null 
+        ? System.getenv("DATABASE_USER") 
+        : "postgres";
+    private static final String PASSWORD = System.getenv("DATABASE_PASSWORD") != null 
+        ? System.getenv("DATABASE_PASSWORD") 
+        : "postgres";
+    
     private static Connection connection = null;
 
     public static Connection getConnection() {
