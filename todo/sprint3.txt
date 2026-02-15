@@ -1,0 +1,26 @@
+ETU  
+3080 FO  
+3185 TL  
+2530 BO 
+
+script de renitialisation
+Table pour la distance sy lieu
+    Distance
+        id 
+        from
+        to
+        kilometers
+    Lieu
+        libelle
+        code
+Planification de la date
+    affichage: page avec champ date
+    fonction:   getListeReservationVoiture(date) --trajet miaraka @ info rehetra
+                getVehiculeDispo(nbClient) 
+                    nbplace > nbClient
+                    tri croissant et prendre le premier
+                    (si nbplace mitovy)comparaison nbPlace, random ra diesel dooly sinon prendre diesel
+                getListeReservation()
+    affichage: page liste de trajet et infos
+    
+
