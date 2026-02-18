@@ -7,6 +7,8 @@ import annotation.PathVariable;
 import annotation.Post;
 import annotation.RestAPI;
 import model.Reservation;
+import model.Voiture;
+import model.TypeEnergie;
 import service.ClientService;
 import service.HotelService;
 import service.ReservationService;
@@ -23,6 +25,7 @@ public class ReservationController {
     private final ReservationService reservationService = new ReservationService();
     private final ClientService clientService = new ClientService();
     private final HotelService hotelService = new HotelService();
+    private final service.VoitureService voitureService = new service.VoitureService();
 
     @Get("/api/reservations")
     @RestAPI
@@ -51,6 +54,11 @@ public class ReservationController {
                 dateHeureArrivee,
                 nombrePassager
         );
+        // assigner automatiquement une voiture selon les regles metier
+        Voiture v = reservationService.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
+        if (v != null) {
+            reservation.setVoiture(v);
+        }
         reservationService.create(reservation);
         return reservation;
     }
@@ -107,12 +115,40 @@ public class ReservationController {
                 dateHeureArrivee,
                 nombrePassager
         );
+        Voiture v = reservationService.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
+        if (v != null) {
+            reservation.setVoiture(v);
+        }
         reservationService.create(reservation);
 
         ModelView view = new ModelView("WEB-INF/reservation-form.jsp");
         view.addObject("clients", clientService.readAll());
         view.addObject("hotels", hotelService.readAll());
         view.addObject("message", "Reservation ajoutee");
+        return view;
+    }
+
+    @Get("/voitures/form")
+    public ModelView voitureForm() throws SQLException {
+        ModelView view = new ModelView("WEB-INF/voiture-form.jsp");
+        view.addObject("types", voitureService.readAllTypes());
+        return view;
+    }
+
+    @Post("/voitures/form")
+    public ModelView submitVoitureForm(
+            @Param("numero") String numero,
+            @Param("idTypeEnergie") Integer idTypeEnergie,
+            @Param("capacite") int capacite
+    ) throws SQLException {
+        model.TypeEnergie te = null;
+        if (idTypeEnergie != null) te = new model.TypeEnergie(idTypeEnergie, null);
+        model.Voiture v = new model.Voiture(null, numero, te, capacite);
+        voitureService.create(v);
+
+        ModelView view = new ModelView("WEB-INF/voiture-form.jsp");
+        view.addObject("types", voitureService.readAllTypes());
+        view.addObject("message", "Voiture creee (id=" + v.getId() + ")");
         return view;
     }
 }

@@ -1,9 +1,16 @@
 package service;
 
-import database.ConnexDB;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+
+import database.ConnexDB;
 import model.Client;
 import model.Hotel;
 import model.Reservation;
@@ -14,9 +21,10 @@ public class ReservationService {
     
     private final ClientService clientService = new ClientService();
     private final HotelService hotelService = new HotelService();
+    private final VoitureService voitureService = new VoitureService();
     
     public void create(Reservation reservation) throws SQLException {
-        String sql = "INSERT INTO reservation (id_client, id_hotel, date_heure_arrivee, nombre_passager) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO reservation (id_client, id_hotel, date_heure_arrivee, nombre_passager, id_voiture) VALUES (?, ?, ?, ?, ?)";
         
         try (Connection conn = ConnexDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -25,6 +33,11 @@ public class ReservationService {
             stmt.setInt(2, reservation.getHotel().getId());
             stmt.setTimestamp(3, parseTimestamp(reservation.getDateHeureArrivee()));
             stmt.setInt(4, reservation.getNombrePassager());
+            if (reservation.getVoiture() != null && reservation.getVoiture().getId() != null) {
+                stmt.setInt(5, reservation.getVoiture().getId());
+            } else {
+                stmt.setNull(5, Types.INTEGER);
+            }
             
             stmt.executeUpdate();
             
@@ -48,7 +61,6 @@ public class ReservationService {
             if (rs.next()) {
                 Client client = clientService.read(rs.getInt("id_client"));
                 Hotel hotel = hotelService.read(rs.getInt("id_hotel"));
-                
                 reservation = new Reservation(
                     rs.getInt("id"),
                     client,
@@ -56,6 +68,11 @@ public class ReservationService {
                     timestampToString(rs.getTimestamp("date_heure_arrivee")),
                     rs.getInt("nombre_passager")
                 );
+                int idVoiture = rs.getInt("id_voiture");
+                if (!rs.wasNull()) {
+                    Voiture v = voitureService.read(idVoiture);
+                    reservation.setVoiture(v);
+                }
             }
         }
         return reservation;
@@ -80,6 +97,11 @@ public class ReservationService {
                     timestampToString(rs.getTimestamp("date_heure_arrivee")),
                     rs.getInt("nombre_passager")
                 );
+                int idVoiture = rs.getInt("id_voiture");
+                if (!rs.wasNull()) {
+                    Voiture v = voitureService.read(idVoiture);
+                    reservation.setVoiture(v);
+                }
                 reservations.add(reservation);
             }
         }
