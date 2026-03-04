@@ -20,7 +20,7 @@ public class ConnexDB {
     
     private static Connection connection = null;
 
-    public static Connection getConnection() {
+    public static Connection getConnection() throws SQLException {
         try {
             if (connection == null || connection.isClosed()) {
 
@@ -35,16 +35,21 @@ public class ConnexDB {
                     String password = "max";
                     connection = DriverManager.getConnection(url, user, password);
                 }
-                // CAS HEROKU
+                // CAS RENDER/HEROKU (avec DATABASE_URL)
                 else {
-                    URI dbUri = new URI(databaseUrl);
-
-                    String user = dbUri.getUserInfo().split(":")[0];
-                    String password = dbUri.getUserInfo().split(":")[1];
-                    String url = "jdbc:postgresql://" + dbUri.getHost() + ":" + dbUri.getPort()
-                            + dbUri.getPath() + "?sslmode=require";
-
-                    connection = DriverManager.getConnection(url, user, password);
+                    // Si l'URL commence déjà par jdbc:postgresql://, on l'utilise directement
+                    if (databaseUrl.startsWith("jdbc:postgresql://")) {
+                        // Format JDBC direct (Render style)
+                        connection = DriverManager.getConnection(databaseUrl);
+                    } else {
+                        // Format URI (Heroku style : postgres://user:password@host:port/database)
+                        URI dbUri = new URI(databaseUrl);
+                        String user = dbUri.getUserInfo().split(":")[0];
+                        String password = dbUri.getUserInfo().split(":")[1];
+                        String url = "jdbc:postgresql://" + dbUri.getHost() + ":" + dbUri.getPort()
+                                + dbUri.getPath() + "?sslmode=require";
+                        connection = DriverManager.getConnection(url, user, password);
+                    }
                 }
 
                 System.out.println("Connexion PostgreSQL établie !");
@@ -52,6 +57,7 @@ public class ConnexDB {
         } catch (Exception e) {
             System.err.println("Erreur connexion DB : " + e.getMessage());
             e.printStackTrace();
+            throw new SQLException("Impossible de se connecter à la base de données", e);
         }
 
         return connection;
