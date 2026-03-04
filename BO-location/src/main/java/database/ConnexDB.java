@@ -25,11 +25,23 @@ public class ConnexDB {
                     String password = "max";
                     connection = DriverManager.getConnection(url, user, password);
                 }
-                // CAS RENDER (avec DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD)
+                // CAS SUPABASE (avec DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD)
                 else {
-                    // Si l'URL ne commence pas déjà par jdbc:postgresql://, on l'ajoute
-                    if (!databaseUrl.startsWith("jdbc:postgresql://")) {
+                    // Convertir postgresql:// en jdbc:postgresql://
+                    if (databaseUrl.startsWith("postgresql://")) {
+                        databaseUrl = databaseUrl.replace("postgresql://", "jdbc:postgresql://");
+                    }
+                    // Si l'URL ne commence pas par jdbc:postgresql://, on l'ajoute
+                    else if (!databaseUrl.startsWith("jdbc:postgresql://")) {
                         databaseUrl = "jdbc:postgresql://" + databaseUrl;
+                    }
+                    
+                    // Supprimer user:password de l'URL si présent (format postgresql://user:pass@host...)
+                    if (databaseUrl.contains("@")) {
+                        String[] parts = databaseUrl.split("@");
+                        if (parts.length == 2) {
+                            databaseUrl = "jdbc:postgresql://" + parts[1];
+                        }
                     }
                     
                     // Ajouter sslmode=require si pas déjà présent
