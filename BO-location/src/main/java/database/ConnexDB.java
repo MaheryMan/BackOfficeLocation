@@ -27,6 +27,10 @@ public class ConnexDB {
                 }
                 // CAS SUPABASE (avec DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD)
                 else {
+                    System.out.println("=== DEBUG CONNEXION ===");
+                    System.out.println("DATABASE_URL brut: " + databaseUrl);
+                    System.out.println("DATABASE_USER: " + databaseUser);
+                    
                     // Convertir postgresql:// en jdbc:postgresql://
                     if (databaseUrl.startsWith("postgresql://")) {
                         databaseUrl = databaseUrl.replace("postgresql://", "jdbc:postgresql://");
@@ -48,6 +52,9 @@ public class ConnexDB {
                     if (!databaseUrl.contains("sslmode=")) {
                         databaseUrl += (databaseUrl.contains("?") ? "&" : "?") + "sslmode=require";
                     }
+                    
+                    System.out.println("URL finale de connexion: " + databaseUrl);
+                    System.out.println("========================");
                     
                     connection = DriverManager.getConnection(databaseUrl, databaseUser, databasePassword);
                 }
