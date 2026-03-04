@@ -2,6 +2,7 @@ package model;
 
 public class TypeEnergie {
     private Integer id;
+    
     private String libelle;
 
     public TypeEnergie() {

@@ -1,6 +1,24 @@
 -- ========================================
--- Données de test pour Client et Hotel
+-- Données de test pour toutes les tables
 -- ========================================
+
+-- Insertion des types d'énergie
+INSERT INTO type_energie (libelle) VALUES
+('Essence'),
+('Diesel'),
+('Électrique'),
+('Hybride');
+
+-- Insertion des voitures
+INSERT INTO voiture (numero, id_type_energie, capacite) VALUES
+('V001', 1, 4),
+('V002', 2, 7),
+('V003', 1, 5),
+('V004', 3, 4),
+('V005', 2, 8),
+('V006', 4, 5),
+('V007', 1, 4),
+('V008', 2, 6);
 
 -- Insertion des clients
 INSERT INTO client (nom, numero_passport, email, contact) VALUES
@@ -27,3 +45,16 @@ INSERT INTO hotel (nom, distance_aeroport) VALUES
 ('Tamboho Hotel', 9.3),
 ('Tana Waterfront', 15.7),
 ('Sakamanga Hotel', 12.1);
+
+-- Insertion des unités
+INSERT INTO unite (libelle) VALUES
+('km'),
+('USD'),
+('EUR'),
+('MGA');
+
+-- Insertion des paramètres
+INSERT INTO parametre (libelle, valeur, id_unite) VALUES
+('Prix par km', '2.5', 1),
+('Prix base réservation', '10', 2),
+('Frais de service', '5000', 4);

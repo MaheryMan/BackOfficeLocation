@@ -1,0 +1,19 @@
+services:
+  # Service Web - BackOffice Location
+  - type: web
+    name: backoffice-location
+    runtime: docker
+    repo: https://github.com/MaheryMan/BackOfficeLocation # À MODIFIER
+    branch: main  # ou master selon votre branche principale
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        value: jdbc:postgresql://dpg-d691dmsr85hc73d4f1ag-a.frankfurt-postgres.render.com:5432/location_s5
+      - key: DATABASE_USER
+        value: location
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: location_s5
+          property: password
+    healthCheckPath: /
+    plan: free  # ou 'starter' selon vos besoins

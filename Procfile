@@ -1,0 +1,1 @@
+web: cd BO-location && java $JAVA_OPTS -jar target/BO-location.war --server.port=$PORT

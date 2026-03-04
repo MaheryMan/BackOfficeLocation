@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.iml
+
+# Build
+BO-location/build
+target
+*.class
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+todo
+*.md
+!README.md
+
+# SQL scripts (déjà exécutés)
+sql
+
+# Logs
+*.log
