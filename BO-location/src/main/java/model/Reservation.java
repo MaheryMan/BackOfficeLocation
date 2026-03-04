@@ -1,6 +1,9 @@
 package model;
 
 import annotations.BaseName;
+import java.sql.SQLException;
+import java.util.List;
+import service.ReservationService;
 
 public class Reservation {
     private Integer id;
@@ -14,6 +17,8 @@ public class Reservation {
     
     @BaseName("nombre_passager")
     private Integer nombrePassager;
+
+    private Voiture voiture;
 
     public Reservation() {
     }
@@ -66,6 +71,8 @@ public class Reservation {
         this.nombrePassager = nombrePassager;
     }
 
+    
+
     @Override
     public String toString() {
         return "Reservation{" +
@@ -76,4 +83,36 @@ public class Reservation {
                 ", nombrePassager=" + nombrePassager +
                 '}';
     }
+
+    public Voiture getVoiture() {
+        return voiture;
+    }
+
+    public void setVoiture(Voiture voiture) {
+        this.voiture = voiture;
+    }
+
+    public Voiture trouverVoiturePourPassengers(int nombrePassager, String dateHeureArrivee) {
+        ReservationService reservationService = new ReservationService();
+        try {
+            return reservationService.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors de la recherche d'une voiture pour " + nombrePassager + " passagers à la date " + dateHeureArrivee, e);
+        }
+    }
+
+    public List<Reservation> getReservationsByVoiture(Voiture voiture) {
+        ReservationService reservationService = new ReservationService();
+    
+    try {
+        return reservationService.getReservationsByVoiture(voiture);
+    } catch (SQLException e) {
+        throw new RuntimeException("Erreur lors de la recuperation des reservations pour la voiture", e);
+    }
+    }
+
+
+  
+
+
 }
