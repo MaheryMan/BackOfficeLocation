@@ -18,8 +18,6 @@ public class Reservation {
     @BaseName("nombre_passager")
     private Integer nombrePassager;
 
-    private Voiture voiture;
-
     public Reservation() {
     }
 
@@ -84,32 +82,25 @@ public class Reservation {
                 '}';
     }
 
-    public Voiture getVoiture() {
-        return voiture;
-    }
 
-    public void setVoiture(Voiture voiture) {
-        this.voiture = voiture;
-    }
+    // public Voiture trouverVoiturePourPassengers(int nombrePassager, String dateHeureArrivee) {
+    //     ReservationService reservationService = new ReservationService();
+    //     try {
+    //         return reservationService.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
+    //     } catch (SQLException e) {
+    //         throw new RuntimeException("Erreur lors de la recherche d'une voiture pour " + nombrePassager + " passagers à la date " + dateHeureArrivee, e);
+    //     }
+    // }
 
-    public Voiture trouverVoiturePourPassengers(int nombrePassager, String dateHeureArrivee) {
-        ReservationService reservationService = new ReservationService();
-        try {
-            return reservationService.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur lors de la recherche d'une voiture pour " + nombrePassager + " passagers à la date " + dateHeureArrivee, e);
-        }
-    }
-
-    public List<Reservation> getReservationsByVoiture(Voiture voiture) {
-        ReservationService reservationService = new ReservationService();
+    // public List<Reservation> getReservationsByVoiture(Voiture voiture) {
+    //     ReservationService reservationService = new ReservationService();
     
-    try {
-        return reservationService.getReservationsByVoiture(voiture);
-    } catch (SQLException e) {
-        throw new RuntimeException("Erreur lors de la recuperation des reservations pour la voiture", e);
-    }
-    }
+    // try {
+    //     return reservationService.getReservationsByVoiture(voiture);
+    // } catch (SQLException e) {
+    //     throw new RuntimeException("Erreur lors de la recuperation des reservations pour la voiture", e);
+    // }
+    // }
 
 
   

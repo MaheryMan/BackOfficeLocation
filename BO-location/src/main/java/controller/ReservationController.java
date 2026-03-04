@@ -12,6 +12,7 @@ import model.TypeEnergie;
 import service.ClientService;
 import service.HotelService;
 import service.ReservationService;
+import service.PlanificationService;
 import util.ModelView;
 
 import java.sql.SQLException;
@@ -26,6 +27,7 @@ public class ReservationController {
     private final ClientService clientService = new ClientService();
     private final HotelService hotelService = new HotelService();
     private final service.VoitureService voitureService = new service.VoitureService();
+    private final PlanificationService planification = new PlanificationService();
 
     @Get("/api/reservations")
     @RestAPI
@@ -54,11 +56,7 @@ public class ReservationController {
                 dateHeureArrivee,
                 nombrePassager
         );
-        // assigner automatiquement une voiture selon les regles metier
-        Voiture v = reservationService.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
-        if (v != null) {
-            reservation.setVoiture(v);
-        }
+       
         reservationService.create(reservation);
         return reservation;
     }
@@ -100,6 +98,18 @@ public class ReservationController {
         view.addObject("hotels", hotelService.readAll());
         return view;
     }
+    
+    @Get("/reservations")
+    public ModelView listeReservation() throws SQLException{
+        ModelView view = new ModelView("WEB-INF/listeReservation.jsp");
+        view.addObject("reservations",reservationService.readAll());
+        return view;
+    }
+    
+    @Get("/reservations/liste")
+    public ModelView listeReservationAlias() throws SQLException{
+        return listeReservation();
+    }
 
     @Post("/reservations/form")
     public ModelView submitReservationForm(
@@ -115,10 +125,7 @@ public class ReservationController {
                 dateHeureArrivee,
                 nombrePassager
         );
-        Voiture v = reservationService.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
-        if (v != null) {
-            reservation.setVoiture(v);
-        }
+
         reservationService.create(reservation);
 
         ModelView view = new ModelView("WEB-INF/reservation-form.jsp");

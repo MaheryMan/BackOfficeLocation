@@ -75,4 +75,33 @@ public class VoitureService {
         }
         return types;
     }
+
+    public List<Voiture> readAll() throws SQLException {
+        String sql = "SELECT v.*, te.libelle AS te_libelle FROM voiture v LEFT JOIN type_energie te ON te.id = v.id_type_energie";
+        List<Voiture> voitures = new ArrayList<>();
+        
+        try (Connection conn = ConnexDB.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            while (rs.next()) {
+                TypeEnergie te = null;
+                int teId = rs.getInt("id_type_energie");
+                if (!rs.wasNull()) {
+                    te = new TypeEnergie(teId, rs.getString("te_libelle"));
+                }
+                
+                Voiture voiture = new Voiture(
+                    rs.getInt("id"),
+                    rs.getString("numero"),
+                    te,
+                    rs.getInt("capacite")
+                );
+                voitures.add(voiture);
+            }
+        }
+        return voitures;
+    }
+
+   
 }

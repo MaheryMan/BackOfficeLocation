@@ -59,37 +59,6 @@ public class Voiture {
         return typeEnergie != null && "diesel".equalsIgnoreCase(typeEnergie.getLibelle());
     }
 
-    public int getNombrePassagerRestant() {
-        Reservation resa= new Reservation();
-        var reservations= resa.getReservationsByVoiture(this);
-        if (reservations != null) {
-            int totalPassagers = 0;
-            for (Reservation r : reservations) {
-                totalPassagers += r.getNombrePassager();
-            }
-            return capacite - totalPassagers;
-        }
-        return capacite;
-    }
-
-    public boolean estDisponible(String dateHeureArrivee, int nombrePassager) {
-        return getNombrePassagerRestant() >= nombrePassager;
-    }
-
-    public Reservation reserver(Client client, Hotel hotel, String dateHeureArrivee, Integer nombrePassager) {
-        if (client == null || hotel == null || dateHeureArrivee == null || nombrePassager == null) {
-            throw new IllegalArgumentException("Tous les champs sont obligatoires pour effectuer une reservation.");
-        }
-        Reservation resa = new Reservation();
-        Voiture voiture = resa.trouverVoiturePourPassengers(nombrePassager, dateHeureArrivee);
-        if (voiture == null) {
-            throw new IllegalArgumentException("Aucune voiture disponible pour " + nombrePassager + " passagers à la date " + dateHeureArrivee);
-        }
-        return voiture.reserver(client, hotel, dateHeureArrivee, nombrePassager);
-
-        
-    }
-
 
 
 }
