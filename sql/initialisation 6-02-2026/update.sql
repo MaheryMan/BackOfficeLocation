@@ -1,28 +1,59 @@
-create table distance (
+-- ========================================
+-- Suppression de toutes les tables
+-- ========================================
+
+DROP TABLE IF EXISTS distance CASCADE;
+DROP TABLE IF EXISTS reservation CASCADE;
+DROP TABLE IF EXISTS parametre CASCADE;
+DROP TABLE IF EXISTS unite CASCADE;
+DROP TABLE IF EXISTS voiture CASCADE;
+DROP TABLE IF EXISTS type_energie CASCADE;
+DROP TABLE IF EXISTS client CASCADE;
+DROP TABLE IF EXISTS hotel CASCADE;
+DROP TABLE IF EXISTS aeroport CASCADE;
+
+-- ========================================
+-- Création de toutes les tables
+-- ========================================
+
+CREATE TABLE type_energie (
     id SERIAL PRIMARY KEY,
-    from_id_aeroport int not null,
-    to_id_hotel int not null,
-    distance decimal(10,2) not null check (distance > 0),
-
-    CONSTRAINT fk_distance_from_aeroport
-        FOREIGN KEY (from_id_aeroport)
-        REFERENCES aeroport(id),
-
-    CONSTRAINT fk_distance_to_hotel
-        FOREIGN KEY (to_id_hotel)
-        REFERENCES hotel(id)
+    libelle VARCHAR(255) NOT NULL UNIQUE
 );
 
-drop table reservation;
-
-create table reservation(
+CREATE TABLE voiture (
     id SERIAL PRIMARY KEY,
-    id_client int not null,
-    id_hotel int not null,
-    id_voiture int not null,
-    date_heure_arrivee timestamp not null,
-    nombre_passager int not null check (nombre_passager > 0),   
-    
+    numero VARCHAR(100) UNIQUE,
+    id_type_energie INT NOT NULL,
+    capacite INT NOT NULL CHECK (capacite > 0),
+
+    CONSTRAINT fk_voiture_type_energie
+        FOREIGN KEY (id_type_energie)
+        REFERENCES type_energie(id)
+);
+
+CREATE TABLE client (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(255) NOT NULL,
+    numero_passport VARCHAR(100) NOT NULL UNIQUE,
+    email VARCHAR(255),
+    contact VARCHAR(100)
+);
+
+CREATE TABLE hotel (
+    id SERIAL PRIMARY KEY,
+    nom VARCHAR(255) NOT NULL UNIQUE,
+    distance_aeroport DECIMAL(10,2) NOT NULL CHECK (distance_aeroport > 0)
+);
+
+CREATE TABLE reservation (
+    id SERIAL PRIMARY KEY,
+    id_client INT NOT NULL,
+    id_hotel INT NOT NULL,
+    id_voiture INT NOT NULL,
+    date_heure_arrivee TIMESTAMP NOT NULL,
+    nombre_passager INT NOT NULL CHECK (nombre_passager > 0),
+
     CONSTRAINT fk_reservation_client
         FOREIGN KEY (id_client)
         REFERENCES client(id),
@@ -33,5 +64,21 @@ create table reservation(
 
     CONSTRAINT fk_reservation_voiture
         FOREIGN KEY (id_voiture)
-        REFERENCES voiture(id)
+        REFERENCES voiture(id)    
+);
+
+CREATE TABLE unite (
+    id SERIAL PRIMARY KEY,
+    libelle VARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE parametre (
+    id SERIAL PRIMARY KEY,
+    libelle VARCHAR(100) NOT NULL UNIQUE,
+    valeur VARCHAR(255) NOT NULL,
+    id_unite INT,
+
+    CONSTRAINT fk_parametre_unite
+        FOREIGN KEY (id_unite)
+        REFERENCES unite(id)
 );
