@@ -1,22 +1,10 @@
 package database;
 
-import java.net.URI;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class ConnexDB {
-    
-    // Configuration depuis les variables d'environnement ou valeurs par défaut pour dev local
-    private static final String URL = System.getenv("DATABASE_URL") != null 
-        ? System.getenv("DATABASE_URL") 
-        : "jdbc:postgresql://localhost:5432/location_S5";
-    private static final String USER = System.getenv("DATABASE_USER") != null 
-        ? System.getenv("DATABASE_USER") 
-        : "postgres";
-    private static final String PASSWORD = System.getenv("DATABASE_PASSWORD") != null 
-        ? System.getenv("DATABASE_PASSWORD") 
-        : "postgres";
     
     private static Connection connection = null;
 
@@ -27,6 +15,8 @@ public class ConnexDB {
                 Class.forName("org.postgresql.Driver");
 
                 String databaseUrl = System.getenv("DATABASE_URL");
+                String databaseUser = System.getenv("DATABASE_USER");
+                String databasePassword = System.getenv("DATABASE_PASSWORD");
 
                 // CAS LOCAL (si DATABASE_URL n'existe pas)
                 if (databaseUrl == null) {
@@ -35,21 +25,19 @@ public class ConnexDB {
                     String password = "max";
                     connection = DriverManager.getConnection(url, user, password);
                 }
-                // CAS RENDER/HEROKU (avec DATABASE_URL)
+                // CAS RENDER (avec DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD)
                 else {
-                    // Si l'URL commence déjà par jdbc:postgresql://, on l'utilise directement
-                    if (databaseUrl.startsWith("jdbc:postgresql://")) {
-                        // Format JDBC direct (Render style)
-                        connection = DriverManager.getConnection(databaseUrl);
-                    } else {
-                        // Format URI (Heroku style : postgres://user:password@host:port/database)
-                        URI dbUri = new URI(databaseUrl);
-                        String user = dbUri.getUserInfo().split(":")[0];
-                        String password = dbUri.getUserInfo().split(":")[1];
-                        String url = "jdbc:postgresql://" + dbUri.getHost() + ":" + dbUri.getPort()
-                                + dbUri.getPath() + "?sslmode=require";
-                        connection = DriverManager.getConnection(url, user, password);
+                    // Si l'URL ne commence pas déjà par jdbc:postgresql://, on l'ajoute
+                    if (!databaseUrl.startsWith("jdbc:postgresql://")) {
+                        databaseUrl = "jdbc:postgresql://" + databaseUrl;
                     }
+                    
+                    // Ajouter sslmode=require si pas déjà présent
+                    if (!databaseUrl.contains("sslmode=")) {
+                        databaseUrl += (databaseUrl.contains("?") ? "&" : "?") + "sslmode=require";
+                    }
+                    
+                    connection = DriverManager.getConnection(databaseUrl, databaseUser, databasePassword);
                 }
 
                 System.out.println("Connexion PostgreSQL établie !");
