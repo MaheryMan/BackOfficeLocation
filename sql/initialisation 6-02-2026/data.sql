@@ -64,6 +64,3 @@ INSERT INTO reservation (id_client, id_hotel, date_heure_arrivee, nombre_passage
 (9, 9, '2026-03-05 10:00:00', 6),   -- Groupe moyen
 (10, 10, '2026-03-05 12:00:00', 9); -- Groupe moyen
 
-
-INSERT INTO voiture (numero, id_type_energie, capacite) VALUES
-('V005', 1, 23);

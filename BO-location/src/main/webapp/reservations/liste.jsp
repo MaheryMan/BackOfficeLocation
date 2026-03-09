@@ -50,7 +50,6 @@
     <a href="/" class="back-link">← Retour à l'accueil</a>
     <h1>Liste des Réservations</h1>
 
-    
     <table>
         <thead>
             <tr>
@@ -65,26 +64,28 @@
             </tr>
         </thead>
         <tbody>
-            <% 
-            Object reservationsObj = request.getAttribute("reservations");
-            if (reservationsObj instanceof List) {
-                for (Object item : (List<?>) reservationsObj) {
-                    if (item instanceof Reservation) {
-                        Reservation r = (Reservation) item;
-                        
+            <%
+                Object reservationsObj = request.getAttribute("reservations");
+                if (reservationsObj instanceof List) {
+                    for (Object item : (List<?>) reservationsObj) {
+                        if (item instanceof Reservation) {
+                            Reservation r = (Reservation) item;
             %>
-           <c:forEach var="r" items="${reservations}">
                 <tr>
-                    <td>${r.id}</td>
-                    <td>${r.client.nom}</td>
-                    <td>${r.client.numeroPassport}</td>
-                    <td>${r.client.email}</td>
-                    <td>${r.client.contact}</td>
-                    <td>${r.hotel.nom}</td>
-                    <td>${r.dateHeureArrivee}</td>
-                    <td>${r.nombrePassager}</td>
+                    <td><%= r.getId() %></td>
+                    <td><%= r.getClient() != null ? r.getClient().getNom() : "N/A" %></td>
+                    <td><%= r.getClient() != null ? r.getClient().getNumeroPassport() : "N/A" %></td>
+                    <td><%= r.getClient() != null ? r.getClient().getEmail() : "N/A" %></td>
+                    <td><%= r.getClient() != null ? r.getClient().getContact() : "N/A" %></td>
+                    <td><%= r.getHotel() != null ? r.getHotel().getNom() : "N/A" %></td>
+                    <td><%= r.getDateHeureArrivee() %></td>
+                    <td><%= r.getNombrePassager() %></td>
                 </tr>
-            </c:forEach>
+            <%
+                        }
+                    }
+                }
+            %>
         </tbody>
     </table>
 </body>
