@@ -47,7 +47,7 @@ public class PlanificationController {
      */
     @Get("/planification")
     public ModelView getPlanificationView(@Param("date") String dateStr) throws SQLException {
-        ModelView view = new ModelView("WEB-INF/planification.jsp");
+        ModelView view = new ModelView("planification/index");
         
         if (dateStr == null || dateStr.isEmpty()) {
             // Date par défaut: aujourd'hui
@@ -70,7 +70,7 @@ public class PlanificationController {
      */
     @Get("/planification/form")
     public ModelView planificationForm() {
-        ModelView view = new ModelView("WEB-INF/planification-form.jsp");
+        ModelView view = new ModelView("planification/form");
         String dateAujourdhui = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         view.addObject("dateAujourdhui", dateAujourdhui);
         return view;

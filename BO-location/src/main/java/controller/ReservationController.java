@@ -121,7 +121,7 @@ public class ReservationController {
     
     @Get("/reservations")
     public ModelView listeReservation() throws SQLException{
-        ModelView view = new ModelView("WEB-INF/listeReservation.jsp");
+        ModelView view = new ModelView("reservations/liste");
         view.addObject("reservations",reservationService.readAll());
         return view;
     }
@@ -157,7 +157,7 @@ public class ReservationController {
 
     @Get("/voitures/form")
     public ModelView voitureForm() throws SQLException {
-        ModelView view = new ModelView("WEB-INF/voiture-form.jsp");
+        ModelView view = new ModelView("voitures/form");
         view.addObject("types", voitureService.readAllTypes());
         return view;
     }
@@ -173,7 +173,7 @@ public class ReservationController {
         model.Voiture v = new model.Voiture(null, numero, te, capacite);
         voitureService.create(v);
 
-        ModelView view = new ModelView("WEB-INF/voiture-form.jsp");
+        ModelView view = new ModelView("voitures/form");
         view.addObject("types", voitureService.readAllTypes());
         view.addObject("message", "Voiture creee (id=" + v.getId() + ")");
         return view;

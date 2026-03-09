@@ -106,7 +106,7 @@
     <div class="container">
         <a href="<%= request.getContextPath() %>/" class="back-link">← Retour à l'accueil</a>
         
-        <h1>📅 Planification des Véhicules</h1>
+        <h1>Planification des Véhicules</h1>
         
         <div class="info-box">
             <p>Sélectionnez une date pour voir la planification des affectations véhicule-réservation.</p>
