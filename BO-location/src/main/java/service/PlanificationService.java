@@ -4,6 +4,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -20,31 +21,63 @@ public class PlanificationService {
     private final ReservationService reservationService = new ReservationService();
     private final VoitureService voitureService = new VoitureService();
 
-    /**
-     * Génère une planification pour une date donnée
-     * @param date Date pour laquelle générer la planification
-     * @return Liste des planifications (affectations voiture-réservation)
-     * @throws SQLException
-     */
+
+    private static class EtatVoiture {
+        int capaciteRestante;
+        List<LocalDateTime> horairesPlanifies;
+        
+        public EtatVoiture(int capaciteTotale) {
+            this.capaciteRestante = capaciteTotale;
+            this.horairesPlanifies = new ArrayList<>();
+        }
+
+        public boolean estHoraireCompatible(LocalDateTime nouvelHoraire) {
+            if (horairesPlanifies.isEmpty()) {
+                return true;
+            }
+            
+            for (LocalDateTime horairePlanifie : horairesPlanifies) {
+                // Vérification stricte : même heure ET même minute
+                if (horairePlanifie.getHour() == nouvelHoraire.getHour() && 
+                    horairePlanifie.getMinute() == nouvelHoraire.getMinute()) {
+                    // C'est exactement la même heure, compatible
+                    continue;
+                } else {
+                    // Horaire différent : la voiture n'est pas disponible (elle ne se libère que le lendemain)
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+        
+        public boolean peutCombinerAvec(LocalDateTime horaire, int nombrePassagers) {
+            // Vérifier si c'est exactement le même horaire (heure ET minute)
+            for (LocalDateTime horairePlanifie : horairesPlanifies) {
+                // Vérification stricte : même heure ET même minute
+                if (horairePlanifie.getHour() == horaire.getHour() && 
+                    horairePlanifie.getMinute() == horaire.getMinute()) {
+                    // Vérifier la capacité
+                    return capaciteRestante >= nombrePassagers;
+                }
+            }
+            
+            return false;
+        }
+    }
+
     public List<Planification> getPlanification(LocalDate date) throws SQLException {
-        // 1. Récupérer toutes les réservations du jour
         List<Reservation> reservations = getReservationsForDate(date);
-        
-        // 2. Récupérer toutes les voitures disponibles
+
         List<Voiture> voitures = voitureService.readAll();
-        
-        // 3. Trier les réservations selon les règles de priorité
+      
         List<Reservation> reservationsSorted = trierReservations(reservations);
-        
-        // 4. Assigner les voitures aux réservations
+    
         List<Planification> planifications = assignerVoitures(reservationsSorted, voitures);
         
         return planifications;
     }
 
-    /**
-     * Récupère toutes les réservations pour une date donnée
-     */
     private List<Reservation> getReservationsForDate(LocalDate date) throws SQLException {
         List<Reservation> allReservations = reservationService.readAll();
         List<Reservation> reservationsFiltered = new ArrayList<>();
@@ -62,17 +95,31 @@ public class PlanificationService {
         return reservationsFiltered;
     }
 
-    /**
-     * Trie les réservations selon les règles de priorité:
-     * 1. Nombre de passagers décroissant (les plus gros groupes d'abord)
-     * 2. Distance croissante (les plus proches d'abord)
-     */
+    // Raha anova ordre de priorite dia ito fostiny no ampifamadihana
+     
+    
     private List<Reservation> trierReservations(List<Reservation> reservations) {
         return reservations.stream()
             .sorted(Comparator
-                .comparing(Reservation::getNombrePassager, Comparator.reverseOrder())
-                .thenComparing(r -> r.getHotel().getDistanceAeroport()))
+                .comparing((Reservation r) -> r.getHotel().getDistanceAeroport())
+                .thenComparing((Reservation r) -> parseDateTime(r.getDateHeureArrivee()))
+                .thenComparing(Reservation::getNombrePassager, Comparator.reverseOrder()))
             .collect(Collectors.toList());
+    }
+
+
+    private LocalDateTime parseDateTime(String dateTimeStr) {
+        try {
+
+            String normalized = dateTimeStr.replace("T", " ");
+            if (normalized.length() == 16) {
+                normalized = normalized + ":00";
+            }
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            return LocalDateTime.parse(normalized, formatter);
+        } catch (Exception e) {
+            return LocalDateTime.now();
+        }
     }
 
     /**
@@ -81,39 +128,40 @@ public class PlanificationService {
      * - On assigne la voiture avec capacité la plus proche du nombre de passagers
      * - En cas d'égalité, on préfère le diesel
      * - En cas d'égalité diesel, on fait un choix aléatoire
-     * - On peut combiner plusieurs réservations dans une même voiture
+     * - On peut combiner plusieurs réservations dans une même voiture uniquement SI:
+     *   * C'est la même heure (différence < 5 minutes)
+     *   * Une fois assignée, la voiture n'est disponible que le lendemain
      */
     private List<Planification> assignerVoitures(List<Reservation> reservations, List<Voiture> voitures) {
         List<Planification> planifications = new ArrayList<>();
         
-        // Carte pour suivre les capacités restantes des voitures
-        Map<Voiture, Integer> capacitesRestantes = new HashMap<>();
+        // Carte pour suivre l'état de chaque voiture
+        Map<Voiture, EtatVoiture> etatsVoitures = new HashMap<>();
         for (Voiture voiture : voitures) {
-            capacitesRestantes.put(voiture, voiture.getCapacite());
+            etatsVoitures.put(voiture, new EtatVoiture(voiture.getCapacite()));
         }
         
         // Parcourir les réservations triées
         for (Reservation reservation : reservations) {
             int nombrePassagers = reservation.getNombrePassager();
+            LocalDateTime horaireReservation = parseDateTime(reservation.getDateHeureArrivee());
             
-            // Chercher si on peut ajouter cette réservation à une voiture déjà utilisée
             Voiture voitureAssignee = null;
             
-            // Option 1: Essayer de combiner avec une voiture déjà utilisée
-            for (Map.Entry<Voiture, Integer> entry : capacitesRestantes.entrySet()) {
+            // Option 1: Essayer de combiner avec une voiture déjà utilisée au même horaire
+            for (Map.Entry<Voiture, EtatVoiture> entry : etatsVoitures.entrySet()) {
                 Voiture voiture = entry.getKey();
-                int capaciteRestante = entry.getValue();
+                EtatVoiture etat = entry.getValue();
                 
-                // Si la capacité restante peut accueillir cette réservation
-                if (capaciteRestante >= nombrePassagers && capaciteRestante < voiture.getCapacite()) {
+                if (etat.peutCombinerAvec(horaireReservation, nombrePassagers)) {
                     voitureAssignee = voiture;
                     break;
                 }
             }
             
-            // Option 2: Si pas de combinaison possible, assigner une nouvelle voiture
+            // Option 2: Si pas de combinaison possible, chercher une nouvelle voiture disponible
             if (voitureAssignee == null) {
-                voitureAssignee = trouverMeilleureVoiture(nombrePassagers, capacitesRestantes);
+                voitureAssignee = trouverMeilleureVoiture(nombrePassagers, horaireReservation, etatsVoitures);
             }
             
             // Créer la planification
@@ -121,30 +169,30 @@ public class PlanificationService {
                 Planification planification = new Planification(reservation, voitureAssignee);
                 planifications.add(planification);
                 
-                // Mettre à jour la capacité restante
-                int nouvelleCapacite = capacitesRestantes.get(voitureAssignee) - nombrePassagers;
-                capacitesRestantes.put(voitureAssignee, nouvelleCapacite);
+                // Mettre à jour l'état de la voiture
+                EtatVoiture etat = etatsVoitures.get(voitureAssignee);
+                etat.capaciteRestante -= nombrePassagers;
+                etat.horairesPlanifies.add(horaireReservation);
             }
         }
         
         return planifications;
     }
 
-    /**
-     * Trouve la meilleure voiture pour un nombre de passagers donné:
-     * - Capacité suffisante (>= nombrePassagers)
-     * - Capacité la plus proche du nombre de passagers
-     * - En cas d'égalité: préférence diesel
-     * - En cas d'égalité diesel: aléatoire
-     */
-    private Voiture trouverMeilleureVoiture(int nombrePassagers, Map<Voiture, Integer> capacitesRestantes) {
+
+    private Voiture trouverMeilleureVoiture(int nombrePassagers, LocalDateTime horaire, 
+                                             Map<Voiture, EtatVoiture> etatsVoitures) {
         List<Voiture> voituresCandidates = new ArrayList<>();
-        
-        // Filtrer les voitures avec capacité totale suffisante
-        for (Map.Entry<Voiture, Integer> entry : capacitesRestantes.entrySet()) {
+ 
+        for (Map.Entry<Voiture, EtatVoiture> entry : etatsVoitures.entrySet()) {
             Voiture voiture = entry.getKey();
-            // On regarde la capacité totale, pas la capacité restante, pour une nouvelle affectation
-            if (voiture.getCapacite() >= nombrePassagers && entry.getValue() == voiture.getCapacite()) {
+            EtatVoiture etat = entry.getValue();
+            
+            // Vérifier que la voiture a la capacité totale disponible (pas encore utilisée pour ce créneau)
+            // ET que l'horaire est compatible avec les autres réservations de cette voiture
+            if (voiture.getCapacite() >= nombrePassagers && 
+                etat.estHoraireCompatible(horaire) &&
+                etat.capaciteRestante == voiture.getCapacite()) {
                 voituresCandidates.add(voiture);
             }
         }
@@ -189,9 +237,6 @@ public class PlanificationService {
         return voituresCapaciteMin.get(random.nextInt(voituresCapaciteMin.size()));
     }
 
-    /**
-     * Récupère les réservations sans voiture assignée pour une date donnée
-     */
     public List<Reservation> getReservationsSansVoiture(LocalDate date) throws SQLException {
         List<Reservation> reservations = getReservationsForDate(date);
         List<Voiture> voitures = voitureService.readAll();
@@ -207,4 +252,3 @@ public class PlanificationService {
             .collect(Collectors.toList());
     }
 }
-

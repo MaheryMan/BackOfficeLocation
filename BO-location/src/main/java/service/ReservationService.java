@@ -143,9 +143,5 @@ public class ReservationService {
     
  
 
-    // public Voiture trouverVoiturePourPassengers(int nombrePassager) throws SQLException {
-    //     return trouverVoiturePourPassengers(nombrePassager, null);
-    // }
 
-   
 }
