@@ -43,3 +43,5 @@ Thumbs.db
 .env
 .env.local
 
+BO-location/src/main/java/database/ConnexDB.java
+/BO-location/target
