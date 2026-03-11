@@ -1,0 +1,15 @@
+temps d'attente
+Objectif
+    regrouper les voitures par temps d'attentes,
+    le dernier temps d'attente dans les reservations est utilise pour le depart de chaque voitures
+
+    Page
+        ajout de colonne heure depart dans le tableau de planification
+    backend
+        creation de model parametre
+            fonction:
+                trier les reservations par heure d'arrivee
+                regouper par temps d'attente (temps d'attente, reservation)
+                ajouter une colonne(variable) heure de depart dans planification
+        modifier assignerVoiture pour prendre le dernier heure pour chaque groupe
+        
