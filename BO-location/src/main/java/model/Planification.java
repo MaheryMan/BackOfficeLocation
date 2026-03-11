@@ -7,6 +7,15 @@ public class Planification {
     private Voiture voiture;
     private String dateHeure;
     private Double distance;
+    private String dateHeureDepart;
+
+    public String getDateHeureDepart() {
+        return dateHeureDepart;
+    }
+
+    public void setDateHeureDepart(String dateHeureDepart) {
+        this.dateHeureDepart = dateHeureDepart;
+    }
 
     public Planification() {
     }
@@ -20,6 +29,15 @@ public class Planification {
         this.distance = reservation.getHotel().getDistanceAeroport();
     }
 
+    public Planification(Reservation reservation, Voiture voiture, String dateHeureDepart) {
+        this.dateHeureDepart = dateHeureDepart;
+        this.reservation = reservation;
+        this.voiture = voiture;
+        this.resaId = reservation.getId();
+        this.voitureId = voiture.getId();
+        this.dateHeure = reservation.getDateHeureArrivee();
+        this.distance = reservation.getHotel().getDistanceAeroport();
+    }
     public Integer getResaId() {
         return resaId;
     }
