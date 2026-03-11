@@ -128,14 +128,13 @@ public class PlanificationService {
     }
 
     /**
-     * Assigne les voitures aux réservations selon les règles:
+     * Assigne les voitures aux réservations selon les règles (Best Fit Decreasing):
      * - On ne sépare pas les passagers d'une réservation
-     * - On assigne la voiture avec capacité la plus proche du nombre de passagers
+     * - Pour chaque réservation, on trouve la voiture la plus adaptée (capacité la plus proche)
+     * - On remplit au maximum la voiture avec les réservations suivantes non affectées
      * - En cas d'égalité, on préfère le diesel
      * - En cas d'égalité diesel, on fait un choix aléatoire
-     * - On peut combiner plusieurs réservations dans une même voiture uniquement SI:
-     *   * C'est la même heure (différence < 5 minutes)
-     *   * Une fois assignée, la voiture n'est disponible que le lendemain
+     * - On peut combiner plusieurs réservations dans une même voiture si même horaire
      */
     private List<Planification> assignerVoitures(List<Reservation> reservations, List<Voiture> voitures) {
         List<Planification> planifications = new ArrayList<>();
@@ -146,25 +145,57 @@ public class PlanificationService {
             etatsVoitures.put(voiture, new EtatVoiture(voiture.getCapacite()));
         }
         
-        // Parcourir les réservations triées
-        for (Reservation reservation : reservations) {
-            int nombrePassagers = reservation.getNombrePassager();
-            LocalDateTime horaireReservation = parseDateTime(reservation.getDateHeureArrivee());
+        // Liste des réservations non encore affectées
+        List<Reservation> reservationsNonAffectees = new ArrayList<>(reservations);
+        
+        // Tant qu'il reste des réservations non affectées
+        while (!reservationsNonAffectees.isEmpty()) {
+            // Prendre la première réservation non affectée (selon l'ordre de tri)
+            Reservation reservationPrincipale = reservationsNonAffectees.get(0);
+            int nombrePassagers = reservationPrincipale.getNombrePassager();
+            LocalDateTime horaireReservation = parseDateTime(reservationPrincipale.getDateHeureArrivee());
             
-            Voiture voitureAssignee = null;
+            // Trouver la meilleure voiture pour cette réservation
+            Voiture voitureAssignee = trouverMeilleureVoiture(nombrePassagers, horaireReservation, etatsVoitures);
             
-            // Chercher d'abord la meilleure voiture (neuve ou existante au même horaire)
-            // Priorité: capacité la plus proche du nombre de passagers
-            voitureAssignee = trouverMeilleureVoiture(nombrePassagers, horaireReservation, etatsVoitures);
-            
-            // Créer la planification
             if (voitureAssignee != null) {
-                Planification planification = new Planification(reservation, voitureAssignee);
+                // Affecter la réservation principale
+                Planification planification = new Planification(reservationPrincipale, voitureAssignee);
                 planifications.add(planification);
                 
                 // Mettre à jour l'état de la voiture
                 EtatVoiture etat = etatsVoitures.get(voitureAssignee);
                 etat.assignerReservation(horaireReservation, nombrePassagers);
+                
+                // Retirer la réservation de la liste des non affectées
+                reservationsNonAffectees.remove(0);
+                
+                // Essayer de remplir la voiture avec les réservations suivantes
+                int i = 0;
+                while (i < reservationsNonAffectees.size()) {
+                    Reservation resaSuivante = reservationsNonAffectees.get(i);
+                    int nbPassagersSuivant = resaSuivante.getNombrePassager();
+                    LocalDateTime horaireSuivant = parseDateTime(resaSuivante.getDateHeureArrivee());
+                    
+                    // Vérifier si on peut ajouter cette réservation dans la même voiture
+                    if (etat.peutAccepterReservation(horaireSuivant, nbPassagersSuivant)) {
+                        // Affecter cette réservation à la même voiture
+                        Planification planifSuivante = new Planification(resaSuivante, voitureAssignee);
+                        planifications.add(planifSuivante);
+                        
+                        // Mettre à jour l'état de la voiture
+                        etat.assignerReservation(horaireSuivant, nbPassagersSuivant);
+                        
+                        // Retirer de la liste et ne pas incrémenter i
+                        reservationsNonAffectees.remove(i);
+                    } else {
+                        // Passer à la réservation suivante
+                        i++;
+                    }
+                }
+            } else {
+                // Aucune voiture disponible pour cette réservation, la retirer
+                reservationsNonAffectees.remove(0);
             }
         }
         
