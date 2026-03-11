@@ -397,6 +397,7 @@
                             <th>Distance</th>
                             <th>Passagers</th>
                             <th>Heure</th>
+                            <th>HeureDepart</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -418,6 +419,7 @@
                             <td><%= String.format("%.1f km", p.getDistance()) %></td>
                             <td><strong><%= p.getReservation().getNombrePassager() %></strong></td>
                             <td><%= p.getDateHeure() != null ? p.getDateHeure().substring(11, 16) : "N/A" %></td>
+                            <td><%= p.getDateHeureDepart() != null ? p.getDateHeureDepart().substring(11, 16) : "N/A" %></td>
                         </tr>
                         <%
                                     }
