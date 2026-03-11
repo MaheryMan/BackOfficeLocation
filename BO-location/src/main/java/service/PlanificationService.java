@@ -72,9 +72,10 @@ public class PlanificationService {
 
         List<Voiture> voitures = voitureService.readAll();
 
-        List<Reservation> reservationsSorted = triReservationParHeureArrivee(reservations);
+        List<Reservation> reservationsTries = triReservationParHeureArrivee(reservations);
 
-        List<List<Reservation>> groupes = regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(), reservationsSorted);
+        List<List<Reservation>> groupes = regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(),
+                reservationsTries);
 
         List<Planification> planifications = assignerVoitures(groupes, voitures);
 
@@ -120,6 +121,8 @@ public class PlanificationService {
 
         for (Reservation reservation : reservations) {
             LocalDateTime horaireArrivee = parseDateTime(reservation.getDateHeureArrivee());
+            System.out.println("Réservation: " + reservation.getDateHeureArrivee() + 
+                               " → parsée à: " + horaireArrivee);
             boolean ajoute = false;
 
             for (List<Reservation> groupe : groupes) {
@@ -147,12 +150,17 @@ public class PlanificationService {
         try {
 
             String normalized = dateTimeStr.replace("T", " ");
+            // Supprimer les décimales (ex: "2026-03-04 08:00:00.0" → "2026-03-04 08:00:00")
+            if (normalized.contains(".")) {
+                normalized = normalized.substring(0, normalized.indexOf("."));
+            }
             if (normalized.length() == 16) {
                 normalized = normalized + ":00";
             }
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             return LocalDateTime.parse(normalized, formatter);
         } catch (Exception e) {
+            System.err.println("Erreur parsing: " + dateTimeStr + " - " + e.getMessage());
             return LocalDateTime.now();
         }
     }
@@ -179,9 +187,8 @@ public class PlanificationService {
 
         // Parcourir les réservations triées
         for (List<Reservation> reservations : groupes) {
-
+            Reservation dernierVol = reservations.get(reservations.size() - 1);
             for (Reservation reservation : reservations) {
-                Reservation dernierVol = reservations.get(reservations.size()-1);
 
                 int nombrePassagers = reservation.getNombrePassager();
                 LocalDateTime horaireReservation = parseDateTime(reservation.getDateHeureArrivee());
@@ -207,7 +214,8 @@ public class PlanificationService {
 
                 // Créer la planification
                 if (voitureAssignee != null) {
-                    Planification planification = new Planification(reservation, voitureAssignee, dernierVol.getDateHeureArrivee());
+                    Planification planification = new Planification(reservation, voitureAssignee,
+                            dernierVol.getDateHeureArrivee());
                     planifications.add(planification);
 
                     // Mettre à jour l'état de la voiture
@@ -282,7 +290,8 @@ public class PlanificationService {
     public List<Reservation> getReservationsSansVoiture(LocalDate date) throws SQLException {
         List<Reservation> reservations = getReservationsForDate(date);
         List<Voiture> voitures = voitureService.readAll();
-        List<Planification> planifications = assignerVoitures(regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(), reservations), voitures);
+        List<Planification> planifications = assignerVoitures(
+                regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(), reservations), voitures);
 
         // Identifier les réservations non planifiées
         List<Integer> resaIdsPlanifiees = planifications.stream()
@@ -293,4 +302,5 @@ public class PlanificationService {
                 .filter(r -> !resaIdsPlanifiees.contains(r.getId()))
                 .collect(Collectors.toList());
     }
+
 }
