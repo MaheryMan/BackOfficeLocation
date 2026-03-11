@@ -36,38 +36,22 @@ public class PlanificationService {
         }
 
         public boolean estHoraireCompatible(LocalDateTime nouvelHoraire) {
-            if (horairesPlanifies.isEmpty()) {
-                return true;
-            }
-
-            for (LocalDateTime horairePlanifie : horairesPlanifies) {
-                // Vérification stricte : même heure ET même minute
-                if (horairePlanifie.getHour() == nouvelHoraire.getHour() &&
-                        horairePlanifie.getMinute() == nouvelHoraire.getMinute()) {
-                    // C'est exactement la même heure, compatible
-                    continue;
-                } else {
-                    // Horaire différent : la voiture n'est pas disponible (elle ne se libère que le
-                    // lendemain)
-                    return false;
-                }
-            }
-
-            return true;
+            // Une voiture n'est disponible pour un nouveau groupe que si elle n'a pas encore
+            // été utilisée dans la journée.
+            return horairesPlanifies.isEmpty();
         }
 
         public boolean peutCombinerAvec(LocalDateTime horaire, int nombrePassagers) {
-            // Vérifier si c'est exactement le même horaire (heure ET minute)
-            for (LocalDateTime horairePlanifie : horairesPlanifies) {
-                // Vérification stricte : même heure ET même minute
-                if (horairePlanifie.getHour() == horaire.getHour() &&
-                        horairePlanifie.getMinute() == horaire.getMinute()) {
-                    // Vérifier la capacité
-                    return capaciteRestante >= nombrePassagers;
-                }
-            }
+            return capaciteRestante >= nombrePassagers;
+        }
 
-            return false;
+        public boolean peutAccepterReservation(LocalDateTime horaire, int nombrePassagers) {
+            return capaciteRestante >= nombrePassagers;
+        }
+
+        public void assignerReservation(LocalDateTime horaire, int nombrePassagers) {
+            capaciteRestante -= nombrePassagers;
+            horairesPlanifies.add(horaire);
         }
     }
 
@@ -189,17 +173,13 @@ public class PlanificationService {
         }
     }
 
-    /**
-     * Assigne les voitures aux réservations selon les règles:
-     * - On ne sépare pas les passagers d'une réservation
-     * - On assigne la voiture avec capacité la plus proche du nombre de passagers
-     * - En cas d'égalité, on préfère le diesel
-     * - En cas d'égalité diesel, on fait un choix aléatoire
-     * - On peut combiner plusieurs réservations dans une même voiture uniquement
-     * SI:
-     * * C'est la même heure (différence < 5 minutes)
-     * * Une fois assignée, la voiture n'est disponible que le lendemain
-     */
+        /**
+        * Assigne les voitures par groupe (bin packing simple):
+        * - On choisit une voiture pour une réservation non affectée
+        * - On remplit cette voiture avec d'autres réservations du même groupe tant qu'il reste de la capacité
+        * - Puis on passe à une nouvelle voiture
+        * - L'heure de départ de tout le groupe est l'heure max des réservations du groupe
+        */
     private List<Planification> assignerVoitures(List<List<Reservation>> groupes, List<Voiture> voitures) {
         List<Planification> planifications = new ArrayList<>();
 
@@ -209,7 +189,7 @@ public class PlanificationService {
             etatsVoitures.put(voiture, new EtatVoiture(voiture.getCapacite()));
         }
 
-        // Parcourir les réservations triées
+        // Parcourir chaque groupe de réservations
         for (List<Reservation> reservations : groupes) {
             LocalDateTime heureDepartGroupe = reservations.stream()
                     .map(r -> parseDateTime(r.getDateHeureArrivee()))
@@ -217,47 +197,59 @@ public class PlanificationService {
                     .orElse(LocalDateTime.now());
             String heureDepartGroupeStr = formatDateTime(heureDepartGroupe);
 
-            for (Reservation reservation : reservations) {
+            // Bin packing: travailler d'abord avec les grosses reservations
+            List<Reservation> reservationsNonAffectees = new ArrayList<>(reservations);
+            reservationsNonAffectees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
 
-                int nombrePassagers = reservation.getNombrePassager();
-                LocalDateTime horaireReservation = parseDateTime(reservation.getDateHeureArrivee());
+            while (!reservationsNonAffectees.isEmpty()) {
+                Reservation reservationPrincipale = reservationsNonAffectees.remove(0);
+                int nombrePassagers = reservationPrincipale.getNombrePassager();
+                LocalDateTime horaireReservation = parseDateTime(reservationPrincipale.getDateHeureArrivee());
 
-                Voiture voitureAssignee = null;
-
-                // Option 1: Essayer de combiner avec une voiture déjà utilisée au même horaire
-                for (Map.Entry<Voiture, EtatVoiture> entry : etatsVoitures.entrySet()) {
-                    Voiture voiture = entry.getKey();
-                    EtatVoiture etat = entry.getValue();
-
-                    if (etat.peutCombinerAvec(horaireReservation, nombrePassagers)) {
-                        voitureAssignee = voiture;
-                        break;
-                    }
-                }
-
-                // Option 2: Si pas de combinaison possible, chercher une nouvelle voiture
-                // disponible
+                Voiture voitureAssignee = trouverMeilleureVoiture(nombrePassagers, horaireReservation, etatsVoitures);
                 if (voitureAssignee == null) {
-                    voitureAssignee = trouverMeilleureVoiture(nombrePassagers, horaireReservation, etatsVoitures);
+                    continue;
                 }
 
-                // Créer la planification
-                if (voitureAssignee != null) {
-                    Planification planification = null;
-                    try {
-                        planification = new Planification(reservation, voitureAssignee,
-                                heureDepartGroupeStr, distanceService.getDistanceDepuisAeroport(reservation.getHotel().getIdLieu()));
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                    }
-                    
-                    if (planification != null) {
-                        planifications.add(planification);
+                EtatVoiture etat = etatsVoitures.get(voitureAssignee);
 
-                        // Mettre à jour l'état de la voiture
-                        EtatVoiture etat = etatsVoitures.get(voitureAssignee);
-                        etat.capaciteRestante -= nombrePassagers;
-                        etat.horairesPlanifies.add(horaireReservation);
+                try {
+                    Planification planification = new Planification(
+                            reservationPrincipale,
+                            voitureAssignee,
+                            heureDepartGroupeStr,
+                            distanceService.getDistanceDepuisAeroport(reservationPrincipale.getHotel().getIdLieu())
+                    );
+                    planifications.add(planification);
+                    etat.assignerReservation(horaireReservation, nombrePassagers);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+
+                // Une fois la voiture choisie, on tente de la remplir au maximum
+                int i = 0;
+                while (i < reservationsNonAffectees.size()) {
+                    Reservation resaSuivante = reservationsNonAffectees.get(i);
+                    int nbPassagersSuivant = resaSuivante.getNombrePassager();
+                    LocalDateTime horaireSuivant = parseDateTime(resaSuivante.getDateHeureArrivee());
+
+                    if (etat.peutAccepterReservation(horaireSuivant, nbPassagersSuivant)) {
+                        try {
+                            Planification planifSuivante = new Planification(
+                                    resaSuivante,
+                                    voitureAssignee,
+                                    heureDepartGroupeStr,
+                                    distanceService.getDistanceDepuisAeroport(resaSuivante.getHotel().getIdLieu())
+                            );
+                            planifications.add(planifSuivante);
+                            etat.assignerReservation(horaireSuivant, nbPassagersSuivant);
+                            reservationsNonAffectees.remove(i);
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                            i++;
+                        }
+                    } else {
+                        i++;
                     }
                 }
             }
