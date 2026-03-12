@@ -396,7 +396,8 @@
                             <th>Hôtel</th>
                             <th>Distance</th>
                             <th>Passagers</th>
-                            <th>Heure</th>
+                            <th>Heure départ</th>
+                            <th>Heure arrivée</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -418,6 +419,17 @@
                             <td><%= String.format("%.1f km", p.getDistance()) %></td>
                             <td><strong><%= p.getReservation().getNombrePassager() %></strong></td>
                             <td><%= p.getDateHeure() != null ? p.getDateHeure().substring(11, 16) : "N/A" %></td>
+                            <td><%
+                                if (p.getDateHeure() != null) {
+                                    String heureStr = p.getDateHeure().substring(11, 16);
+                                    int heure = Integer.parseInt(heureStr.substring(0, 2));
+                                    String minutes = heureStr.substring(3, 5);
+                                    int heureArrivee = (heure + 1) % 24;
+                                    out.print(String.format("%02d:%s", heureArrivee, minutes));
+                                } else {
+                                    out.print("N/A");
+                                }
+                            %></td>
                         </tr>
                         <%
                                     }
@@ -447,7 +459,8 @@
                             <th>Hôtel</th>
                             <th>Distance</th>
                             <th>Passagers</th>
-                            <th>Heure</th>
+                            <th>Heure départ</th>
+                            <th>Heure arrivée</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -463,6 +476,17 @@
                             <td><%= r.getHotel() != null ? String.format("%.1f km", r.getHotel().getDistanceAeroport()) : "N/A" %></td>
                             <td><strong><%= r.getNombrePassager() %></strong></td>
                             <td><%= r.getDateHeureArrivee() != null ? r.getDateHeureArrivee().substring(11, 16) : "N/A" %></td>
+                            <td><%
+                                if (r.getDateHeureArrivee() != null) {
+                                    String heureStr = r.getDateHeureArrivee().substring(11, 16);
+                                    int heure = Integer.parseInt(heureStr.substring(0, 2));
+                                    String minutes = heureStr.substring(3, 5);
+                                    int heureArrivee = (heure + 1) % 24;
+                                    out.print(String.format("%02d:%s", heureArrivee, minutes));
+                                } else {
+                                    out.print("N/A");
+                                }
+                            %></td>
                         </tr>
                         <%
                                 }
