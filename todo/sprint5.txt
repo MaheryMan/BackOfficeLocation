@@ -12,4 +12,3 @@ Objectif
                 regouper par temps d'attente (temps d'attente, reservation)
                 ajouter une colonne(variable) heure de depart dans planification
         modifier assignerVoiture pour prendre le dernier heure pour chaque groupe
-        
