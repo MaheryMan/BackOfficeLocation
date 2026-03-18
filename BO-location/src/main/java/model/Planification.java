@@ -13,6 +13,8 @@ public class Planification {
     private Double distanceAeroportHotel;
     private String hotelPrecedent;
     private Integer nbTrajet;
+    private Integer passagersAffectes;
+    private Integer passagersDemandes;
 
     public String getDateHeureDepart() {
         return dateHeureDepart;
@@ -52,6 +54,22 @@ public class Planification {
 
     public void setNbTrajet(Integer nbTrajet) {
         this.nbTrajet = nbTrajet;
+    }
+
+    public Integer getPassagersAffectes() {
+        return passagersAffectes;
+    }
+
+    public void setPassagersAffectes(Integer passagersAffectes) {
+        this.passagersAffectes = passagersAffectes;
+    }
+
+    public Integer getPassagersDemandes() {
+        return passagersDemandes;
+    }
+
+    public void setPassagersDemandes(Integer passagersDemandes) {
+        this.passagersDemandes = passagersDemandes;
     }
 
     public Planification() {
@@ -152,6 +170,8 @@ public class Planification {
                 ", distanceAeroportHotel=" + distanceAeroportHotel +
                 ", hotelPrecedent='" + hotelPrecedent + '\'' +
                 ", nbTrajet=" + nbTrajet +
+                ", passagersAffectes=" + passagersAffectes +
+                ", passagersDemandes=" + passagersDemandes +
                 ", nombrePassager=" + (reservation != null ? reservation.getNombrePassager() : "N/A") +
                 ", capaciteVoiture=" + (voiture != null ? voiture.getCapacite() : "N/A") +
                 '}';

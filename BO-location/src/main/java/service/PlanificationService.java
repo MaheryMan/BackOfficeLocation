@@ -52,6 +52,16 @@ public class PlanificationService {
         }
     }
 
+    private static class AffectationPartielle {
+        Reservation reservation;
+        int passagersAffectes;
+
+        AffectationPartielle(Reservation reservation, int passagersAffectes) {
+            this.reservation = reservation;
+            this.passagersAffectes = passagersAffectes;
+        }
+    }
+
     public List<Planification> getPlanification(LocalDate date) throws SQLException {
         List<Reservation> reservations = getReservationsForDate(date);
 
@@ -196,50 +206,78 @@ public class PlanificationService {
                     .orElse(LocalDateTime.now());
             String heureDepartGroupeStr = formatDateTime(heureDepartGroupe);
 
-            // Bin packing: travailler d'abord avec les grosses reservations
-            List<Reservation> reservationsNonAffectees = new ArrayList<>(reservations);
-            reservationsNonAffectees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
+            List<Reservation> reservationsOrdonnees = new ArrayList<>(reservations);
+            reservationsOrdonnees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
 
-            while (!reservationsNonAffectees.isEmpty()) {
-                Reservation reservationPrincipale = reservationsNonAffectees.remove(0);
-                int nombrePassagers = reservationPrincipale.getNombrePassager();
+            Map<Reservation, Integer> passagersRestants = new HashMap<>();
+            for (Reservation reservation : reservationsOrdonnees) {
+                passagersRestants.put(reservation, getNombrePassagers(reservation));
+            }
 
-                Voiture voitureAssignee = trouverMeilleureVoiture(nombrePassagers, heureDepartGroupe, etatsVoitures);
-                if (voitureAssignee == null) {
-                    continue;
-                }
+            // Regle metier: traiter d'abord la reservation la plus grande,
+            // et la terminer (split possible) avant de passer a la suivante.
+            for (Reservation reservationPrincipale : reservationsOrdonnees) {
+                while (passagersRestants.getOrDefault(reservationPrincipale, 0) > 0) {
+                    int passagersRestantsPrincipale = passagersRestants.getOrDefault(reservationPrincipale, 0);
 
-                EtatVoiture etat = etatsVoitures.get(voitureAssignee);
-                int capaciteRestante = voitureAssignee.getCapacite();
-                int numeroTrajet = etat.getNombreTrajets() + 1;
-
-                List<Reservation> reservationsAffecteesVoiture = new ArrayList<>();
-                reservationsAffecteesVoiture.add(reservationPrincipale);
-                capaciteRestante -= nombrePassagers;
-
-                // Une fois la voiture choisie, on tente de la remplir au maximum
-                int i = 0;
-                while (i < reservationsNonAffectees.size()) {
-                    Reservation resaSuivante = reservationsNonAffectees.get(i);
-                    int nbPassagersSuivant = resaSuivante.getNombrePassager();
-
-                    if (capaciteRestante >= nbPassagersSuivant) {
-                        reservationsAffecteesVoiture.add(resaSuivante);
-                        capaciteRestante -= nbPassagersSuivant;
-                        reservationsNonAffectees.remove(i);
-                    } else {
-                        i++;
+                    Voiture voitureAssignee = trouverMeilleureVoiture(
+                            passagersRestantsPrincipale,
+                            heureDepartGroupe,
+                            etatsVoitures);
+                    if (voitureAssignee == null) {
+                        break;
                     }
-                }
 
-                LocalDateTime dateRetourTrajet = ajouterPlanificationsPourVoitureEtGroupe(
-                        planifications,
-                        reservationsAffecteesVoiture,
-                        voitureAssignee,
-                        heureDepartGroupeStr,
-                        vitesseMoyenne,
-                        numeroTrajet);
-                etat.enregistrerTrajet(dateRetourTrajet);
+                    EtatVoiture etat = etatsVoitures.get(voitureAssignee);
+                    int capaciteRestante = voitureAssignee.getCapacite();
+                    int numeroTrajet = etat.getNombreTrajets() + 1;
+
+                    List<AffectationPartielle> reservationsAffecteesVoiture = new ArrayList<>();
+                    int passagersAffectesPrincipale = Math.min(passagersRestantsPrincipale, capaciteRestante);
+                    if (passagersAffectesPrincipale <= 0) {
+                        break;
+                    }
+
+                    reservationsAffecteesVoiture.add(
+                            new AffectationPartielle(reservationPrincipale, passagersAffectesPrincipale));
+                    passagersRestants.put(
+                            reservationPrincipale,
+                            passagersRestantsPrincipale - passagersAffectesPrincipale);
+                    capaciteRestante -= passagersAffectesPrincipale;
+
+                    // Garder l'ancienne regle: si la voiture a encore des places,
+                    // les completer avec d'autres reservations du groupe.
+                    List<Reservation> autresReservations = passagersRestants.entrySet().stream()
+                            .filter(e -> e.getKey() != reservationPrincipale && e.getValue() > 0)
+                            .sorted((e1, e2) -> Integer.compare(e2.getValue(), e1.getValue()))
+                            .map(Map.Entry::getKey)
+                            .collect(Collectors.toList());
+
+                    for (Reservation resaSuivante : autresReservations) {
+                        if (capaciteRestante <= 0) {
+                            break;
+                        }
+
+                        int nbPassagersSuivant = passagersRestants.getOrDefault(resaSuivante, 0);
+                        if (nbPassagersSuivant <= 0) {
+                            continue;
+                        }
+
+                        int passagersAffectes = Math.min(nbPassagersSuivant, capaciteRestante);
+                        reservationsAffecteesVoiture.add(new AffectationPartielle(resaSuivante, passagersAffectes));
+                        capaciteRestante -= passagersAffectes;
+                        passagersRestants.put(resaSuivante, nbPassagersSuivant - passagersAffectes);
+                    }
+
+                    LocalDateTime dateRetourTrajet = ajouterPlanificationsPourVoitureEtGroupe(
+                            planifications,
+                            reservationsAffecteesVoiture,
+                            voitureAssignee,
+                            heureDepartGroupeStr,
+                            vitesseMoyenne,
+                            numeroTrajet);
+                    etat.enregistrerTrajet(dateRetourTrajet);
+                }
             }
         }
 
@@ -248,7 +286,7 @@ public class PlanificationService {
 
     private LocalDateTime ajouterPlanificationsPourVoitureEtGroupe(
             List<Planification> planifications,
-            List<Reservation> reservationsAffecteesVoiture,
+            List<AffectationPartielle> reservationsAffecteesVoiture,
             Voiture voitureAssignee,
             String heureDepartGroupeStr,
             Double vitesseMoyenneKmH,
@@ -257,9 +295,16 @@ public class PlanificationService {
             return parseDateTime(heureDepartGroupeStr);
         }
 
+        Map<Reservation, Integer> passagersAffectesParReservation = new HashMap<>();
+        List<Reservation> reservationsPourItineraire = new ArrayList<>();
+        for (AffectationPartielle affectation : reservationsAffecteesVoiture) {
+            passagersAffectesParReservation.put(affectation.reservation, affectation.passagersAffectes);
+            reservationsPourItineraire.add(affectation.reservation);
+        }
+
         // Itineraire: aeroport -> hotel le plus proche, puis proche en proche -> aeroport
         List<Reservation> reservationsTrieesParProximite = construireOrdreItineraireProcheEnProche(
-            reservationsAffecteesVoiture);
+            reservationsPourItineraire);
 
         double distanceTotaleCircuit = calculerDistanceTotaleCircuit(reservationsTrieesParProximite);
         LocalDateTime dateHeureRetourCommune = calculerDateHeureRetour(
@@ -287,10 +332,12 @@ public class PlanificationService {
                     heureDepartGroupeStr,
                     distanceSegment
             );
-                planification.setDateHeureRetour(dateHeureRetourCommuneStr);
+            planification.setDateHeureRetour(dateHeureRetourCommuneStr);
             planification.setDistanceAeroportHotel(distanceAeroportHotel);
             planification.setHotelPrecedent(hotelPrecedentNom);
-                planification.setNbTrajet(numeroTrajet);
+            planification.setNbTrajet(numeroTrajet);
+            planification.setPassagersAffectes(passagersAffectesParReservation.getOrDefault(reservation, 0));
+            planification.setPassagersDemandes(getNombrePassagers(reservation));
             planifications.add(planification);
 
             lieuPrecedentId = lieuActuelId;
@@ -420,6 +467,22 @@ public class PlanificationService {
         return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
+    private int getNombrePassagers(Reservation reservation) {
+        return reservation != null && reservation.getNombrePassager() != null
+                ? reservation.getNombrePassager()
+                : 0;
+    }
+
+    private Reservation clonerReservationAvecPassagers(Reservation source, int passagers) {
+        Reservation clone = new Reservation();
+        clone.setId(source.getId());
+        clone.setClient(source.getClient());
+        clone.setHotel(source.getHotel());
+        clone.setDateHeureArrivee(source.getDateHeureArrivee());
+        clone.setNombrePassager(passagers);
+        return clone;
+    }
+
     private Voiture trouverMeilleureVoiture(int nombrePassagers, LocalDateTime horaire,
             Map<Voiture, EtatVoiture> etatsVoitures) {
         List<Voiture> voituresCandidates = new ArrayList<>();
@@ -428,7 +491,7 @@ public class PlanificationService {
             Voiture voiture = entry.getKey();
             EtatVoiture etat = entry.getValue();
 
-            if (voiture.getCapacite() >= nombrePassagers && etat.estDisponible(horaire)) {
+            if (voiture.getCapacite() > 0 && etat.estDisponible(horaire)) {
                 voituresCandidates.add(voiture);
             }
         }
@@ -437,16 +500,28 @@ public class PlanificationService {
             return null;
         }
 
-        // Trier par capacité croissante (pour avoir la plus proche)
-        voituresCandidates.sort(Comparator.comparing(Voiture::getCapacite));
+        int maxAffectable = voituresCandidates.stream()
+            .mapToInt(v -> Math.min(v.getCapacite(), nombrePassagers))
+            .max()
+            .orElse(0);
 
-        // Trouver la capacité minimale qui convient
-        int capaciteMin = voituresCandidates.get(0).getCapacite();
+        if (maxAffectable <= 0) {
+            return null;
+        }
 
-        // Filtrer pour ne garder que celles avec la capacité minimale
         List<Voiture> voituresCapaciteMin = voituresCandidates.stream()
+            .filter(v -> Math.min(v.getCapacite(), nombrePassagers) == maxAffectable)
+                .collect(Collectors.toList());
+
+        if (maxAffectable >= nombrePassagers) {
+            int capaciteMin = voituresCapaciteMin.stream()
+                .mapToInt(Voiture::getCapacite)
+                .min()
+                .orElse(Integer.MAX_VALUE);
+            voituresCapaciteMin = voituresCapaciteMin.stream()
                 .filter(v -> v.getCapacite() == capaciteMin)
                 .collect(Collectors.toList());
+        }
 
         // Si une seule voiture, la retourner
         if (voituresCapaciteMin.size() == 1) {
@@ -489,16 +564,29 @@ public class PlanificationService {
     public List<Reservation> getReservationsSansVoiture(LocalDate date) throws SQLException {
         List<Reservation> reservations = getReservationsForDate(date);
         List<Voiture> voitures = voitureService.readAll();
+        List<Reservation> reservationsTries = triReservationParHeureArrivee(reservations);
         List<Planification> planifications = assignerVoitures(
-                regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(), reservations), voitures);
+            regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(), reservationsTries), voitures);
 
-        // Identifier les réservations non planifiées
-        List<Integer> resaIdsPlanifiees = planifications.stream()
-                .map(Planification::getResaId)
-                .collect(Collectors.toList());
+        Map<Integer, Integer> passagersAffectesParReservation = new HashMap<>();
+        for (Planification planification : planifications) {
+            int passagersAffectes = planification.getPassagersAffectes() != null
+                ? planification.getPassagersAffectes()
+                : getNombrePassagers(planification.getReservation());
+            passagersAffectesParReservation.merge(planification.getResaId(), passagersAffectes, Integer::sum);
+        }
 
         return reservations.stream()
-                .filter(r -> !resaIdsPlanifiees.contains(r.getId()))
+            .map(r -> {
+                int total = getNombrePassagers(r);
+                int affectes = passagersAffectesParReservation.getOrDefault(r.getId(), 0);
+                int restants = Math.max(0, total - affectes);
+                if (restants > 0) {
+                return clonerReservationAvecPassagers(r, restants);
+                }
+                return null;
+            })
+            .filter(r -> r != null)
                 .collect(Collectors.toList());
     }
 
@@ -545,7 +633,7 @@ public class PlanificationService {
     }
 
     private Planification save(Connection conn, Planification planification) throws SQLException {
-        String sql = "INSERT INTO planification (reservation_id, voiture_id, date_heure, distance_aeroport, date_heure_depart, date_heure_retour, nbtrajet) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO planification (reservation_id, voiture_id, date_heure, distance_aeroport, date_heure_depart, date_heure_retour, nbtrajet, passagers_affectes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         try (var pstmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setInt(1, planification.getResaId());
             pstmt.setInt(2, planification.getVoitureId());
@@ -554,6 +642,9 @@ public class PlanificationService {
             pstmt.setTimestamp(5, toSqlTimestamp(planification.getDateHeureDepart()));
             pstmt.setTimestamp(6, toSqlTimestamp(planification.getDateHeureRetour()));
             pstmt.setInt(7, planification.getNbTrajet() != null ? planification.getNbTrajet() : 1);
+            pstmt.setInt(8, planification.getPassagersAffectes() != null
+                    ? planification.getPassagersAffectes()
+                    : getNombrePassagers(planification.getReservation()));
             pstmt.executeUpdate();
 
             try (var rs = pstmt.getGeneratedKeys()) {

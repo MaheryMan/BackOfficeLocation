@@ -130,6 +130,7 @@ CREATE TABLE planification (
     date_heure_depart TIMESTAMP NOT NULL,
     date_heure_retour TIMESTAMP,
     nbtrajet INT NOT NULL DEFAULT 1 CHECK (nbtrajet > 0),
+    passagers_affectes INT NOT NULL CHECK (passagers_affectes > 0),
     CONSTRAINT fk_planification_voiture
         FOREIGN KEY (voiture_id)
         REFERENCES voiture(id)
@@ -139,8 +140,7 @@ CREATE TABLE planification (
         FOREIGN KEY (reservation_id)
         REFERENCES reservation(id)
         ON UPDATE CASCADE
-        ON DELETE CASCADE,
-    CONSTRAINT uq_planification_reservation UNIQUE (reservation_id)
+        ON DELETE CASCADE
 );
 
 -- ---------------------------------------------------------
