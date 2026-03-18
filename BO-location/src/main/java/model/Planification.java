@@ -9,6 +9,10 @@ public class Planification {
     private String dateHeure;
     private Double distance;
     private String dateHeureDepart;
+    private String dateHeureRetour;
+    private Double distanceAeroportHotel;
+    private String hotelPrecedent;
+    private Integer nbTrajet;
 
     public String getDateHeureDepart() {
         return dateHeureDepart;
@@ -16,6 +20,38 @@ public class Planification {
 
     public void setDateHeureDepart(String dateHeureDepart) {
         this.dateHeureDepart = dateHeureDepart;
+    }
+
+    public String getDateHeureRetour() {
+        return dateHeureRetour;
+    }
+
+    public void setDateHeureRetour(String dateHeureRetour) {
+        this.dateHeureRetour = dateHeureRetour;
+    }
+
+    public Double getDistanceAeroportHotel() {
+        return distanceAeroportHotel;
+    }
+
+    public void setDistanceAeroportHotel(Double distanceAeroportHotel) {
+        this.distanceAeroportHotel = distanceAeroportHotel;
+    }
+
+    public String getHotelPrecedent() {
+        return hotelPrecedent;
+    }
+
+    public void setHotelPrecedent(String hotelPrecedent) {
+        this.hotelPrecedent = hotelPrecedent;
+    }
+
+    public Integer getNbTrajet() {
+        return nbTrajet;
+    }
+
+    public void setNbTrajet(Integer nbTrajet) {
+        this.nbTrajet = nbTrajet;
     }
 
     public Planification() {
@@ -111,6 +147,11 @@ public class Planification {
                 ", voitureId=" + voitureId +
                 ", dateHeure='" + dateHeure + '\'' +
                 ", distance=" + distance +
+                ", dateHeureDepart='" + dateHeureDepart + '\'' +
+                ", dateHeureRetour='" + dateHeureRetour + '\'' +
+                ", distanceAeroportHotel=" + distanceAeroportHotel +
+                ", hotelPrecedent='" + hotelPrecedent + '\'' +
+                ", nbTrajet=" + nbTrajet +
                 ", nombrePassager=" + (reservation != null ? reservation.getNombrePassager() : "N/A") +
                 ", capaciteVoiture=" + (voiture != null ? voiture.getCapacite() : "N/A") +
                 '}';

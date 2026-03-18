@@ -394,10 +394,14 @@
                             <th>Capacité</th>
                             <th>Client</th>
                             <th>Hôtel</th>
+                            <th>Distance Aéroport-Hôtel</th>
+                            <th>Hôtel Précédent</th>
                             <th>Distance</th>
+                            <th>NbTrajet</th>
                             <th>Passagers</th>
                             <th>Heure</th>
                             <th>HeureDepart</th>
+                            <th>HeureRetour</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -416,10 +420,14 @@
                             <td><%= p.getVoiture().getCapacite() %> places</td>
                             <td><%= p.getReservation().getClient() != null ? p.getReservation().getClient().getNom() : "N/A" %></td>
                             <td><%= p.getReservation().getHotel() != null ? p.getReservation().getHotel().getNom() : "N/A" %></td>
-                            <td><%= String.format("%.1f km", p.getDistance()) %></td>
+                            <td><%= p.getDistanceAeroportHotel() != null ? String.format("%.1f km", p.getDistanceAeroportHotel()) : "N/A" %></td>
+                            <td><%= p.getHotelPrecedent() != null ? p.getHotelPrecedent() : "Aéroport" %></td>
+                            <td><%= p.getDistance() != null ? String.format("%.1f km", p.getDistance()) : "N/A" %></td>
+                            <td><%= p.getNbTrajet() != null ? p.getNbTrajet() : "N/A" %></td>
                             <td><strong><%= p.getReservation().getNombrePassager() %></strong></td>
                             <td><%= p.getDateHeure() != null ? p.getDateHeure().substring(11, 16) : "N/A" %></td>
                             <td><%= p.getDateHeureDepart() != null ? p.getDateHeureDepart().substring(11, 16) : "N/A" %></td>
+                            <td><%= p.getDateHeureRetour() != null ? p.getDateHeureRetour().substring(11, 16) : "N/A" %></td>
                         </tr>
                         <%
                                     }

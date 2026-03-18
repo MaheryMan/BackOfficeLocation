@@ -128,6 +128,8 @@ CREATE TABLE planification (
     date_heure TIMESTAMP NOT NULL,
     distance_aeroport DECIMAL(10,2) NOT NULL CHECK (distance_aeroport > 0),
     date_heure_depart TIMESTAMP NOT NULL,
+    date_heure_retour TIMESTAMP,
+    nbtrajet INT NOT NULL DEFAULT 1 CHECK (nbtrajet > 0),
     CONSTRAINT fk_planification_voiture
         FOREIGN KEY (voiture_id)
         REFERENCES voiture(id)

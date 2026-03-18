@@ -27,7 +27,7 @@ public class PlanificationController {
     @RestAPI
     public List<Planification> getPlanificationAPI(@Param("date") String dateStr) throws SQLException {
         LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        return planificationService.getPlanification(date);
+        return planificationService.regenerateAndSavePlanification(date);
     }
 
     /**
@@ -55,7 +55,7 @@ public class PlanificationController {
         }
         
         LocalDate date = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        List<Planification> planifications = planificationService.getPlanification(date);
+        List<Planification> planifications = planificationService.regenerateAndSavePlanification(date);
         List<Reservation> reservationsSansVoiture = planificationService.getReservationsSansVoiture(date);
         
         view.addObject("planifications", planifications);
