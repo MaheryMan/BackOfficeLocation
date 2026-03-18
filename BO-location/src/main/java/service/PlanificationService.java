@@ -1,5 +1,6 @@
 package service;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -13,6 +14,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
+import database.ConnexDB;
+
 import model.Planification;
 import model.Reservation;
 import model.Voiture;
@@ -21,6 +24,7 @@ public class PlanificationService {
     private final ReservationService reservationService = new ReservationService();
     private final VoitureService voitureService = new VoitureService();
     private final ParametreService parametreService = new ParametreService();
+    private final DistanceService distanceService = new DistanceService();
 
     private static class EtatVoiture {
         int capaciteRestante;
@@ -76,9 +80,13 @@ public class PlanificationService {
 
         List<List<Reservation>> groupes = regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(),
                 reservationsTries);
+                
+        for (List<Reservation> groupe : groupes) {
+            //comparer par distance aéroport
+            groupe.sort(Comparator.comparing(this::getDistanceAeroportAllerRetourPourTri));
+        }
 
         List<Planification> planifications = assignerVoitures(groupes, voitures);
-
         return planifications;
     }
 
@@ -104,10 +112,26 @@ public class PlanificationService {
     private List<Reservation> trierReservations(List<Reservation> reservations) {
         return reservations.stream()
                 .sorted(Comparator
-                        .comparing((Reservation r) -> r.getHotel().getDistanceAeroport())
+                        .comparing(this::getDistanceAeroportAllerRetourPourTri)
                         .thenComparing((Reservation r) -> parseDateTime(r.getDateHeureArrivee()))
                         .thenComparing(Reservation::getNombrePassager, Comparator.reverseOrder()))
                 .collect(Collectors.toList());
+    }
+
+    private double getDistanceAeroportAllerRetourPourTri(Reservation reservation) {
+        if (reservation == null || reservation.getHotel() == null || reservation.getHotel().getIdLieu() == null) {
+            return Double.MAX_VALUE;
+        }
+
+        try {
+            Double distanceSimple = distanceService.getDistanceDepuisAeroport(reservation.getHotel().getIdLieu());
+            if (distanceSimple == null) {
+                return Double.MAX_VALUE;
+            }
+            return distanceSimple * 2.0;
+        } catch (SQLException e) {
+            return Double.MAX_VALUE;
+        }
     }
 
     public List<Reservation> triReservationParHeureArrivee(List<Reservation> reservations) {
@@ -187,7 +211,12 @@ public class PlanificationService {
 
         // Parcourir les réservations triées
         for (List<Reservation> reservations : groupes) {
-            Reservation dernierVol = reservations.get(reservations.size() - 1);
+            LocalDateTime heureDepartGroupe = reservations.stream()
+                    .map(r -> parseDateTime(r.getDateHeureArrivee()))
+                    .max(LocalDateTime::compareTo)
+                    .orElse(LocalDateTime.now());
+            String heureDepartGroupeStr = formatDateTime(heureDepartGroupe);
+
             for (Reservation reservation : reservations) {
 
                 int nombrePassagers = reservation.getNombrePassager();
@@ -214,19 +243,31 @@ public class PlanificationService {
 
                 // Créer la planification
                 if (voitureAssignee != null) {
-                    Planification planification = new Planification(reservation, voitureAssignee,
-                            dernierVol.getDateHeureArrivee());
-                    planifications.add(planification);
+                    Planification planification = null;
+                    try {
+                        planification = new Planification(reservation, voitureAssignee,
+                                heureDepartGroupeStr, distanceService.getDistanceDepuisAeroport(reservation.getHotel().getIdLieu()));
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                    
+                    if (planification != null) {
+                        planifications.add(planification);
 
-                    // Mettre à jour l'état de la voiture
-                    EtatVoiture etat = etatsVoitures.get(voitureAssignee);
-                    etat.capaciteRestante -= nombrePassagers;
-                    etat.horairesPlanifies.add(horaireReservation);
+                        // Mettre à jour l'état de la voiture
+                        EtatVoiture etat = etatsVoitures.get(voitureAssignee);
+                        etat.capaciteRestante -= nombrePassagers;
+                        etat.horairesPlanifies.add(horaireReservation);
+                    }
                 }
             }
         }
 
         return planifications;
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
     private Voiture trouverMeilleureVoiture(int nombrePassagers, LocalDateTime horaire,
@@ -303,4 +344,29 @@ public class PlanificationService {
                 .collect(Collectors.toList());
     }
 
+    public Planification save(Planification planification) throws SQLException {
+        Connection conn = ConnexDB.getConnection();
+        try {
+            String sql = "INSERT INTO planification (reservation_id, voiture_id, date_heure, distance_aeroport, date_heure_depart) VALUES (?, ?, ?, ?, ?)";
+            var pstmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS);
+            pstmt.setInt(1, planification.getResaId());
+            pstmt.setInt(2, planification.getVoitureId());
+            pstmt.setString(3, planification.getDateHeure());
+            pstmt.setDouble(4, planification.getDistance());
+            pstmt.setString(5, planification.getDateHeureDepart());
+            pstmt.executeUpdate();
+
+            var rs = pstmt.getGeneratedKeys();
+            if (rs.next()) {
+                int id = rs.getInt(1);
+                planification.setId(id);
+                System.out.println("Planification saved with ID: " + id);
+                return planification;
+            } else {
+                throw new SQLException("Failed to retrieve generated ID for Planification");
+            }
+        } finally {
+            conn.close();
+        }
+    }
 }

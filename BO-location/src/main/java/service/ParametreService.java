@@ -12,7 +12,7 @@ public class ParametreService {
              var rs = stmt.executeQuery(sql)) {
             
             if (rs.next()) {
-                parametre = new Parametre(rs.getInt("temps_attente"));
+                parametre = new Parametre(rs.getInt("temps_attente"), rs.getDouble("vitesse_moyenne"));
             }
         } catch (Exception e) {
             e.printStackTrace();

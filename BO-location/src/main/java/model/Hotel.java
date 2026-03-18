@@ -5,17 +5,16 @@ import annotations.BaseName;
 public class Hotel {
     private Integer id;
     private String nom;
-    
-    @BaseName("distance_aeroport")
-    private Double distanceAeroport;
+    @BaseName("id_lieu")
+    private Integer idLieu;
 
     public Hotel() {
     }
 
-    public Hotel(Integer id, String nom, Double distanceAeroport) {
+    public Hotel(Integer id, String nom, Integer idLieu) {
         this.id = id;
         this.nom = nom;
-        this.distanceAeroport = distanceAeroport;
+        this.idLieu = idLieu;
     }
 
     public Integer getId() {
@@ -34,12 +33,12 @@ public class Hotel {
         this.nom = nom;
     }
 
-    public Double getDistanceAeroport() {
-        return distanceAeroport;
+    public Integer getIdLieu() {
+        return idLieu;
     }
 
-    public void setDistanceAeroport(Double distanceAeroport) {
-        this.distanceAeroport = distanceAeroport;
+    public void setIdLieu(Integer idLieu) {
+        this.idLieu = idLieu;
     }
 
     @Override
@@ -47,7 +46,7 @@ public class Hotel {
         return "Hotel{" +
                 "id=" + id +
                 ", nom='" + nom + '\'' +
-                ", distanceAeroport=" + distanceAeroport +
+                ", idLieu=" + idLieu +
                 '}';
     }
 }

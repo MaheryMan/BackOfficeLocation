@@ -116,26 +116,6 @@ CREATE TABLE distance (
 );
 
 
-CREATE TABLE planification (
-    id SERIAL PRIMARY KEY,
-    id_reservation INT NOT NULL,
-    id_voiture INT NOT NULL,
-    date_affectation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_planification_reservation
-        FOREIGN KEY (id_reservation)
-        REFERENCES reservation(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_planification_voiture
-        FOREIGN KEY (id_voiture)
-        REFERENCES voiture(id)
-        ON DELETE CASCADE,
-    
-    CONSTRAINT unique_reservation UNIQUE (id_reservation)
-);
-
-
 INSERT INTO client (nom, numero_passport, email, contact) VALUES
 ('Rakoto Jean', 'P123456', 'rakoto.jean@email.mg', '+261 32 11 222 33'),
 ('Rabe Marie', 'P234567', 'rabe.marie@email.mg', '+261 33 44 555 66'),

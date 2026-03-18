@@ -1,6 +1,7 @@
 package model;
 
 public class Planification {
+    private Integer id;
     private Integer resaId;
     private Integer voitureId;
     private Reservation reservation;
@@ -20,23 +21,31 @@ public class Planification {
     public Planification() {
     }
 
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
     public Planification(Reservation reservation, Voiture voiture) {
         this.reservation = reservation;
         this.voiture = voiture;
         this.resaId = reservation.getId();
         this.voitureId = voiture.getId();
         this.dateHeure = reservation.getDateHeureArrivee();
-        this.distance = reservation.getHotel().getDistanceAeroport();
     }
 
-    public Planification(Reservation reservation, Voiture voiture, String dateHeureDepart) {
+    public Planification(Reservation reservation, Voiture voiture, String dateHeureDepart, Double distance) {
         this.dateHeureDepart = dateHeureDepart;
         this.reservation = reservation;
         this.voiture = voiture;
         this.resaId = reservation.getId();
         this.voitureId = voiture.getId();
         this.dateHeure = reservation.getDateHeureArrivee();
-        this.distance = reservation.getHotel().getDistanceAeroport();
+        this.distance = distance;
+
     }
     public Integer getResaId() {
         return resaId;
@@ -44,6 +53,14 @@ public class Planification {
 
     public void setResaId(Integer resaId) {
         this.resaId = resaId;
+    }
+
+    public Integer getReservationId() {
+        return resaId;
+    }
+
+    public void setReservationId(Integer reservationId) {
+        this.resaId = reservationId;
     }
 
     public Integer getVoitureId() {
@@ -89,7 +106,8 @@ public class Planification {
     @Override
     public String toString() {
         return "Planification{" +
-                "resaId=" + resaId +
+                "id=" + id +
+                ", reservationId=" + resaId +
                 ", voitureId=" + voitureId +
                 ", dateHeure='" + dateHeure + '\'' +
                 ", distance=" + distance +

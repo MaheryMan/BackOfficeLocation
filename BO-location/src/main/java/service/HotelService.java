@@ -11,13 +11,13 @@ public class HotelService {
     
 
     public void create(Hotel hotel) throws SQLException {
-        String sql = "INSERT INTO hotel (nom, distance_aeroport) VALUES (?, ?)";
+        String sql = "INSERT INTO hotel (nom, id_lieu) VALUES (?, ?)";
         
         try (Connection conn = ConnexDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             
             stmt.setString(1, hotel.getNom());
-            stmt.setDouble(2, hotel.getDistanceAeroport());
+            stmt.setInt(2, hotel.getIdLieu());
             
             stmt.executeUpdate();
             
@@ -29,7 +29,7 @@ public class HotelService {
     }
 
     public Hotel read(int id) throws SQLException {
-        String sql = "SELECT * FROM hotel WHERE id = ?";
+        String sql = "SELECT id, nom, id_lieu FROM hotel WHERE id = ?";
         Hotel hotel = null;
         
         try (Connection conn = ConnexDB.getConnection();
@@ -42,7 +42,7 @@ public class HotelService {
                 hotel = new Hotel(
                     rs.getInt("id"),
                     rs.getString("nom"),
-                    rs.getDouble("distance_aeroport")
+                    rs.getInt("id_lieu")
                 );
             }
         }
@@ -50,7 +50,7 @@ public class HotelService {
     }
 
     public List<Hotel> readAll() throws SQLException {
-        String sql = "SELECT * FROM hotel";
+        String sql = "SELECT id, nom, id_lieu FROM hotel";
         List<Hotel> hotels = new ArrayList<>();
         
         try (Connection conn = ConnexDB.getConnection();
@@ -61,7 +61,7 @@ public class HotelService {
                 Hotel hotel = new Hotel(
                     rs.getInt("id"),
                     rs.getString("nom"),
-                    rs.getDouble("distance_aeroport")
+                    rs.getInt("id_lieu")
                 );
                 hotels.add(hotel);
             }
@@ -70,13 +70,13 @@ public class HotelService {
     }
 
     public void update(Hotel hotel) throws SQLException {
-        String sql = "UPDATE hotel SET nom = ?, distance_aeroport = ? WHERE id = ?";
+        String sql = "UPDATE hotel SET nom = ?, id_lieu = ? WHERE id = ?";
         
         try (Connection conn = ConnexDB.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             
             stmt.setString(1, hotel.getNom());
-            stmt.setDouble(2, hotel.getDistanceAeroport());
+            stmt.setInt(2, hotel.getIdLieu());
             stmt.setInt(3, hotel.getId());
             
             stmt.executeUpdate();

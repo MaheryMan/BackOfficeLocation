@@ -462,7 +462,7 @@
                             <td><span class="badge badge-warning">#<%= r.getId() %></span></td>
                             <td><%= r.getClient() != null ? r.getClient().getNom() : "N/A" %></td>
                             <td><%= r.getHotel() != null ? r.getHotel().getNom() : "N/A" %></td>
-                            <td><%= r.getHotel() != null ? String.format("%.1f km", r.getHotel().getDistanceAeroport()) : "N/A" %></td>
+                            <td>N/A</td>
                             <td><strong><%= r.getNombrePassager() %></strong></td>
                             <td><%= r.getDateHeureArrivee() != null ? r.getDateHeureArrivee().substring(11, 16) : "N/A" %></td>
                         </tr>
