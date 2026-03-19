@@ -46,3 +46,4 @@ Thumbs.db
 BO-location/src/main/java/database/ConnexDB.java
 /BO-location/target
 deploy.bat
+BO-location/build/BO-location.war
