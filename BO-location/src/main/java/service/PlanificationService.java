@@ -256,22 +256,21 @@ public class PlanificationService {
                             passagersRestantsPrincipale - passagersAffectesPrincipale);
                     capaciteRestante -= passagersAffectesPrincipale;
 
-                    // Garder l'ancienne regle: si la voiture a encore des places,
-                    // les completer avec d'autres reservations du groupe.
-                    List<Reservation> autresReservations = passagersRestants.entrySet().stream()
-                            .filter(e -> e.getKey() != reservationPrincipale && e.getValue() > 0)
-                            .sorted((e1, e2) -> Integer.compare(e2.getValue(), e1.getValue()))
-                            .map(Map.Entry::getKey)
-                            .collect(Collectors.toList());
-
-                    for (Reservation resaSuivante : autresReservations) {
-                        if (capaciteRestante <= 0) {
+                    // Nouvelle regle metier: prendre d'abord la reservation dont le reste
+                    // est le plus proche et >= a la capacite restante de la voiture.
+                    // S'il n'y en a pas, prendre la plus grande < capacite restante.
+                    while (capaciteRestante > 0) {
+                        Reservation resaSuivante = trouverReservationPourCompleterVoiture(
+                                passagersRestants,
+                                reservationPrincipale,
+                                capaciteRestante);
+                        if (resaSuivante == null) {
                             break;
                         }
 
                         int nbPassagersSuivant = passagersRestants.getOrDefault(resaSuivante, 0);
                         if (nbPassagersSuivant <= 0) {
-                            continue;
+                            break;
                         }
 
                         int passagersAffectes = Math.min(nbPassagersSuivant, capaciteRestante);
@@ -528,6 +527,48 @@ public class PlanificationService {
         clone.setNombrePassager(passagers);
         return clone;
     }
+
+        private Reservation trouverReservationPourCompleterVoiture(
+            Map<Reservation, Integer> passagersRestants,
+            Reservation reservationPrincipale,
+            int capaciteRestante) {
+        List<Reservation> candidates = passagersRestants.entrySet().stream()
+            .filter(e -> e.getKey() != reservationPrincipale && e.getValue() != null && e.getValue() > 0)
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toList());
+
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        Comparator<Reservation> tieBreaker = Comparator
+            .comparing((Reservation r) -> parseDateTime(r.getDateHeureArrivee()))
+            .thenComparing(r -> r.getId() != null ? r.getId() : Integer.MAX_VALUE);
+
+        List<Reservation> superieurOuEgal = candidates.stream()
+            .filter(r -> passagersRestants.getOrDefault(r, 0) >= capaciteRestante)
+            .sorted(Comparator
+                .comparing((Reservation r) -> passagersRestants.getOrDefault(r, 0))
+                .thenComparing(tieBreaker))
+            .collect(Collectors.toList());
+
+        if (!superieurOuEgal.isEmpty()) {
+            return superieurOuEgal.get(0);
+        }
+
+        List<Reservation> inferieur = candidates.stream()
+            .filter(r -> passagersRestants.getOrDefault(r, 0) < capaciteRestante)
+            .sorted(Comparator
+                .comparing((Reservation r) -> passagersRestants.getOrDefault(r, 0), Comparator.reverseOrder())
+                .thenComparing(tieBreaker))
+            .collect(Collectors.toList());
+
+        if (!inferieur.isEmpty()) {
+            return inferieur.get(0);
+        }
+
+        return null;
+        }
 
     private Voiture trouverMeilleureVoiture(int nombrePassagers, LocalDateTime horaire,
             Map<Voiture, EtatVoiture> etatsVoitures) {
