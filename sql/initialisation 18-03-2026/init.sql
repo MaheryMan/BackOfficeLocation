@@ -34,6 +34,7 @@ CREATE TABLE voiture (
     numero VARCHAR(100) NOT NULL UNIQUE,
     id_type_energie INT,
     capacite INT NOT NULL CHECK (capacite > 0),
+    heure_disponibilite VARCHAR(100) NOT NULL,
     CONSTRAINT fk_voiture_type_energie
         FOREIGN KEY (id_type_energie)
         REFERENCES type_energie(id)

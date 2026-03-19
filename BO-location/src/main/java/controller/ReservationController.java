@@ -166,11 +166,12 @@ public class ReservationController {
     public ModelView submitVoitureForm(
             @Param("numero") String numero,
             @Param("idTypeEnergie") Integer idTypeEnergie,
-            @Param("capacite") int capacite
+            @Param("capacite") int capacite,
+            @Param("heureDisponibilite") String heureDisponibilite
     ) throws SQLException {
         model.TypeEnergie te = null;
         if (idTypeEnergie != null) te = new model.TypeEnergie(idTypeEnergie, null);
-        model.Voiture v = new model.Voiture(null, numero, te, capacite);
+        model.Voiture v = new model.Voiture(null, numero, te, capacite, heureDisponibilite);
         voitureService.create(v);
 
         ModelView view = new ModelView("voitures/form");

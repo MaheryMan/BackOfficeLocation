@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -537,7 +538,9 @@ public class PlanificationService {
             Voiture voiture = entry.getKey();
             EtatVoiture etat = entry.getValue();
 
-            if (voiture.getCapacite() > 0 && etat.estDisponible(horaire)) {
+            if (voiture.getCapacite() > 0
+                    && estDisponibleSelonHeureVoiture(voiture, horaire)
+                    && etat.estDisponible(horaire)) {
                 voituresCandidates.add(voiture);
             }
         }
@@ -605,6 +608,60 @@ public class PlanificationService {
         // Si aucune diesel, choisir aleatoirement parmi les moins sollicitees
         Random random = new Random();
         return voituresMoinsTrajets.get(random.nextInt(voituresMoinsTrajets.size()));
+    }
+
+    private boolean estDisponibleSelonHeureVoiture(Voiture voiture, LocalDateTime horaireReservation) {
+        if (voiture == null || horaireReservation == null) {
+            return true;
+        }
+
+        String heureDisponibilite = voiture.getHeureDisponibilite();
+        if (heureDisponibilite == null || heureDisponibilite.isBlank()) {
+            return true;
+        }
+
+        String valeur = heureDisponibilite.trim();
+        LocalTime heureReservation = horaireReservation.toLocalTime();
+
+        // Regle metier: heure de disponibilite = heure quotidienne (pas de date fixe)
+        // Donc meme si une date est fournie, on ne compare que l'heure.
+        if (valeur.contains("-") || valeur.contains("T") || valeur.contains(" ")) {
+            LocalTime heureDepuisDateHeure = extraireHeureDepuisDateHeure(valeur);
+            if (heureDepuisDateHeure != null) {
+                return !heureReservation.isBefore(heureDepuisDateHeure);
+            }
+        }
+
+        try {
+            LocalTime heure = LocalTime.parse(valeur, DateTimeFormatter.ofPattern("HH:mm:ss"));
+            return !heureReservation.isBefore(heure);
+        } catch (Exception ignored) {
+            // Continuer avec HH:mm
+        }
+
+        try {
+            LocalTime heure = LocalTime.parse(valeur, DateTimeFormatter.ofPattern("HH:mm"));
+            return !heureReservation.isBefore(heure);
+        } catch (Exception ignored) {
+            // Format inconnu: ne pas bloquer toute planification
+            return true;
+        }
+    }
+
+    private LocalTime extraireHeureDepuisDateHeure(String valeur) {
+        String normalized = valeur.replace("T", " ");
+        if (normalized.contains(".")) {
+            normalized = normalized.substring(0, normalized.indexOf('.'));
+        }
+
+        try {
+            if (normalized.length() == 16) {
+                normalized = normalized + ":00";
+            }
+            return LocalDateTime.parse(normalized, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")).toLocalTime();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public List<Reservation> getReservationsSansVoiture(LocalDate date) throws SQLException {
