@@ -107,7 +107,7 @@ INSERT INTO client (nom, numero_passport, email, contact) VALUES
 INSERT INTO reservation (id_client, id_hotel, date_heure_arrivee, nombre_passager) VALUES
     (1, 1, '2026-03-18 08:00:00', 10),
     (5, 1, '2026-03-18 08:05:00', 9),
-    (6, 2, '2026-03-18 08:10:00', 7),
+    (6, 1, '2026-03-18 08:10:00', 7),
     (2, 2, '2026-03-18 08:15:00', 5),
     (8, 4, '2026-03-18 08:20:00', 4);
 
