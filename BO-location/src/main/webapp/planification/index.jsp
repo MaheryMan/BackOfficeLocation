@@ -426,6 +426,7 @@
         <div class="eyebrow">
             <svg class="ico"><use href="#i-cal"/></svg>Planification du jour
         </div>
+         <h1>3080 -- 2530 -- 3185</h1>
         <h1>Affectations véhicules</h1>
         <p class="subline">Date&nbsp;: <strong><%= request.getAttribute("date") %></strong></p>
     </div>
