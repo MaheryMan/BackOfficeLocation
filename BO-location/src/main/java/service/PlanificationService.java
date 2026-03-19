@@ -198,15 +198,26 @@ public class PlanificationService {
             etatsVoitures.put(voiture, new EtatVoiture());
         }
 
+        List<Reservation> reliquatsReportes = new ArrayList<>();
+
         // Parcourir chaque groupe de réservations
-        for (List<Reservation> reservations : groupes) {
-            LocalDateTime heureDepartGroupe = reservations.stream()
+        for (int indexGroupe = 0; indexGroupe < groupes.size(); indexGroupe++) {
+            List<Reservation> reservationsGroupe = new ArrayList<>(groupes.get(indexGroupe));
+            reservationsGroupe.addAll(reliquatsReportes);
+            reservationsGroupe = fusionnerReservationsParId(reservationsGroupe);
+            reliquatsReportes = new ArrayList<>();
+
+            if (reservationsGroupe.isEmpty()) {
+                continue;
+            }
+
+            LocalDateTime heureDepartGroupe = reservationsGroupe.stream()
                     .map(r -> parseDateTime(r.getDateHeureArrivee()))
                     .max(LocalDateTime::compareTo)
                     .orElse(LocalDateTime.now());
             String heureDepartGroupeStr = formatDateTime(heureDepartGroupe);
 
-            List<Reservation> reservationsOrdonnees = new ArrayList<>(reservations);
+            List<Reservation> reservationsOrdonnees = new ArrayList<>(reservationsGroupe);
             reservationsOrdonnees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
 
             Map<Reservation, Integer> passagersRestants = new HashMap<>();
@@ -279,9 +290,44 @@ public class PlanificationService {
                     etat.enregistrerTrajet(dateRetourTrajet);
                 }
             }
+
+            if (indexGroupe < groupes.size() - 1) {
+                for (Map.Entry<Reservation, Integer> entry : passagersRestants.entrySet()) {
+                    int restants = entry.getValue() != null ? entry.getValue() : 0;
+                    if (restants > 0) {
+                        reliquatsReportes.add(clonerReservationAvecPassagers(entry.getKey(), restants));
+                    }
+                }
+            }
         }
 
         return planifications;
+    }
+
+    private List<Reservation> fusionnerReservationsParId(List<Reservation> reservations) {
+        Map<Integer, Reservation> reservationsFusionnees = new HashMap<>();
+        int fallbackId = -1;
+
+        for (Reservation reservation : reservations) {
+            if (reservation == null) {
+                continue;
+            }
+
+            Integer cleReservation = reservation.getId();
+            if (cleReservation == null) {
+                cleReservation = fallbackId--;
+            }
+
+            int nbPassagers = getNombrePassagers(reservation);
+            Reservation existante = reservationsFusionnees.get(cleReservation);
+            if (existante == null) {
+                reservationsFusionnees.put(cleReservation, clonerReservationAvecPassagers(reservation, nbPassagers));
+            } else {
+                existante.setNombrePassager(getNombrePassagers(existante) + nbPassagers);
+            }
+        }
+
+        return new ArrayList<>(reservationsFusionnees.values());
     }
 
     private LocalDateTime ajouterPlanificationsPourVoitureEtGroupe(

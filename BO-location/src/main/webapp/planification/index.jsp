@@ -3,6 +3,7 @@
 <%@ page import="java.util.Map" %>
 <%@ page import="java.util.LinkedHashMap" %>
 <%@ page import="java.util.ArrayList" %>
+<%@ page import="java.util.HashMap" %>
 <%@ page import="model.Planification" %>
 <%@ page import="model.Reservation" %>
 <!DOCTYPE html>
@@ -75,6 +76,31 @@
         /* ── Alert ── */
         .alert { display:flex; align-items:center; gap:10px; background:var(--warning-dim); border:1px solid rgba(237,137,54,.22); border-left:3px solid var(--warning); border-radius:var(--rs); padding:11px 16px; margin-bottom:20px; font-size:13px; color:#f6ad55; animation:fadeUp .45s .1s ease both; }
         .alert strong { font-weight:700; color:#fbd38d; }
+
+        /* ── Suivi restant par reservation ── */
+        .res-summary-wrap { margin-bottom:20px; animation:fadeUp .45s .12s ease both; }
+        .res-summary-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+        @media(max-width:760px){ .res-summary-grid { grid-template-columns:1fr; } }
+        .res-summary-card {
+            background:var(--surface);
+            border:1px solid var(--border);
+            border-radius:var(--r);
+            padding:12px 14px;
+        }
+        .res-summary-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:10px; }
+        .res-summary-id { display:flex; align-items:center; gap:8px; }
+        .res-id-badge { display:inline-flex; align-items:center; gap:5px; font-family:var(--fh); font-size:10px; font-weight:700; color:var(--txt2); border:1px solid var(--border); border-radius:100px; padding:3px 9px; }
+        .res-client { font-size:13px; font-weight:700; color:var(--txt); }
+        .res-time { font-size:11px; color:var(--txt2); margin-top:2px; }
+        .res-state { display:inline-flex; align-items:center; gap:5px; border-radius:100px; border:1px solid; padding:3px 8px; font-family:var(--fh); font-size:10px; font-weight:700; white-space:nowrap; }
+        .res-ok { color:var(--success); background:var(--success-dim); border-color:rgba(72,187,120,.2); }
+        .res-part { color:var(--warning); background:var(--warning-dim); border-color:rgba(237,137,54,.2); }
+        .res-metrics { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+        .res-metric { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:var(--txt2); background:var(--surface2); border:1px solid var(--border); border-radius:100px; padding:3px 9px; }
+        .res-metric strong { font-family:var(--fh); font-size:12px; color:var(--txt); }
+        .res-bar { position:relative; height:8px; border-radius:100px; background:rgba(255,255,255,.06); border:1px solid var(--border); overflow:hidden; }
+        .res-bar > span { display:block; height:100%; background:linear-gradient(90deg, #2f7fe1 0%, #4e9eff 100%); }
+        .res-remain-note { margin-top:7px; font-size:11px; color:var(--txt2); }
 
         /* ── Section label ── */
         .sec-label { display:flex; align-items:center; gap:9px; margin-bottom:12px; animation:fadeUp .45s .12s ease both; }
@@ -224,6 +250,18 @@
         .pax-tag.ok   { background:var(--accent-dim);  color:var(--accent);  border-color:rgba(78,158,255,.2); }
         .pax-tag.part { background:var(--warning-dim); color:var(--warning); border-color:rgba(237,137,54,.2); }
         .pax-tag.over { background:var(--danger-dim);  color:var(--danger);  border-color:rgba(245,101,101,.2); }
+        .pax-remain {
+            display:inline-flex;
+            align-items:center;
+            gap:4px;
+            font-size:10px;
+            font-weight:700;
+            padding:2px 7px;
+            border-radius:100px;
+            border:1px solid rgba(245,101,101,.2);
+            color:var(--danger);
+            background:var(--danger-dim);
+        }
 
         /* Bloc horaires (colonne droite) */
         .time-block {
@@ -308,6 +346,12 @@
     int totalSansVoiture    = reservationsSansVoiture != null ? reservationsSansVoiture.size() : 0;
     int totalPassagers = 0;
 
+    Map<Integer, Integer> demandesParResa = new LinkedHashMap<>();
+    Map<Integer, Integer> affectesParResa = new LinkedHashMap<>();
+    Map<Integer, String> clientParResa = new HashMap<>();
+    Map<Integer, String> heureParResa = new HashMap<>();
+    Map<Integer, String> hotelParResa = new HashMap<>();
+
     Map<String, Map<String, List<Planification>>> grouped = new LinkedHashMap<>();
     Map<String, Planification> voitureRef = new LinkedHashMap<>();
 
@@ -319,11 +363,54 @@
                 totalPassagers += p.getPassagersAffectes() != null ? p.getPassagersAffectes() : p.getReservation().getNombrePassager();
                 String num  = p.getVoiture().getNumero();
                 String hDep = p.getDateHeureDepart() != null ? p.getDateHeureDepart().substring(11,16) : "—";
+
+                Integer resaId = p.getResaId();
+                if (resaId != null) {
+                    int pxDemande = p.getPassagersDemandes() != null ? p.getPassagersDemandes() : p.getReservation().getNombrePassager();
+                    int pxAffecte = p.getPassagersAffectes() != null ? p.getPassagersAffectes() : p.getReservation().getNombrePassager();
+                    demandesParResa.merge(resaId, pxDemande, Integer::max);
+                    affectesParResa.merge(resaId, pxAffecte, Integer::sum);
+                    String nomClient = p.getReservation().getClient() != null ? p.getReservation().getClient().getNom() : "N/A";
+                    String nomHotel = p.getReservation().getHotel() != null ? p.getReservation().getHotel().getNom() : "N/A";
+                    String heureArrivee = p.getDateHeure() != null ? p.getDateHeure().substring(11,16) : "—";
+                    clientParResa.putIfAbsent(resaId, nomClient);
+                    hotelParResa.putIfAbsent(resaId, nomHotel);
+                    heureParResa.putIfAbsent(resaId, heureArrivee);
+                }
+
                 if (!grouped.containsKey(num))  { grouped.put(num, new LinkedHashMap<>()); voitureRef.put(num, p); }
                 if (!grouped.get(num).containsKey(hDep)) grouped.get(num).put(hDep, new ArrayList<>());
                 grouped.get(num).get(hDep).add(p);
             }
         }
+    }
+
+    if (reservationsSansVoiture != null) {
+        for (Object item : reservationsSansVoiture) {
+            if (item instanceof Reservation) {
+                Reservation r = (Reservation) item;
+                if (r.getId() == null) continue;
+                int restant = r.getNombrePassager() != null ? r.getNombrePassager() : 0;
+                affectesParResa.putIfAbsent(r.getId(), 0);
+                demandesParResa.put(r.getId(), affectesParResa.getOrDefault(r.getId(), 0) + restant);
+                String nomClient = r.getClient() != null ? r.getClient().getNom() : "N/A";
+                String nomHotel = r.getHotel() != null ? r.getHotel().getNom() : "N/A";
+                String heureArrivee = r.getDateHeureArrivee() != null ? r.getDateHeureArrivee().substring(11,16) : "—";
+                clientParResa.putIfAbsent(r.getId(), nomClient);
+                hotelParResa.putIfAbsent(r.getId(), nomHotel);
+                heureParResa.putIfAbsent(r.getId(), heureArrivee);
+            }
+        }
+    }
+
+    int totalDemandes = 0;
+    int totalRestants = 0;
+    for (Map.Entry<Integer, Integer> e : demandesParResa.entrySet()) {
+        int dem = e.getValue() != null ? e.getValue() : 0;
+        int aff = affectesParResa.getOrDefault(e.getKey(), 0);
+        int rest = Math.max(0, dem - aff);
+        totalDemandes += dem;
+        totalRestants += rest;
     }
 %>
 
@@ -366,6 +453,47 @@
     <div class="alert">
         <svg class="ico"><use href="#i-alert"/></svg>
         <span><strong><%= totalSansVoiture %> réservation<%= totalSansVoiture > 1 ? "s" : "" %></strong> n'ont pas pu être affectées à un véhicule faute de capacité disponible.</span>
+    </div>
+    <% } %>
+
+    <% if (!demandesParResa.isEmpty()) { %>
+    <div class="res-summary-wrap">
+        <div class="sec-label">
+            <h2>Suivi de charge par réservation</h2>
+            <span class="pill"><%= totalDemandes %> demandés · <%= totalPassagers %> affectés · <%= totalRestants %> restants</span>
+        </div>
+        <div class="sec-rule"></div>
+        <div class="res-summary-grid">
+            <%
+            for (Map.Entry<Integer, Integer> e : demandesParResa.entrySet()) {
+                Integer resaId = e.getKey();
+                int dem = e.getValue() != null ? e.getValue() : 0;
+                int aff = affectesParResa.getOrDefault(resaId, 0);
+                int rest = Math.max(0, dem - aff);
+                int pct = dem > 0 ? Math.min(100, (int) Math.round((aff * 100.0) / dem)) : 0;
+                boolean complet = rest == 0;
+            %>
+            <div class="res-summary-card">
+                <div class="res-summary-head">
+                    <div>
+                        <div class="res-summary-id">
+                            <span class="res-id-badge"><svg class="ico" style="width:11px;height:11px"><use href="#i-tag"/></svg>Résa #<%= resaId %></span>
+                            <span class="res-client"><%= clientParResa.getOrDefault(resaId, "N/A") %></span>
+                        </div>
+                        <div class="res-time">Arrivée <%= heureParResa.getOrDefault(resaId, "—") %> · Destination <%= hotelParResa.getOrDefault(resaId, "N/A") %></div>
+                    </div>
+                    <span class="res-state <%= complet ? "res-ok" : "res-part" %>"><%= complet ? "Complet" : (rest + " restant" + (rest > 1 ? "s" : "")) %></span>
+                </div>
+                <div class="res-metrics">
+                    <span class="res-metric">Demandé <strong><%= dem %></strong></span>
+                    <span class="res-metric">Affecté <strong><%= aff %></strong></span>
+                    <span class="res-metric">Reste <strong><%= rest %></strong></span>
+                </div>
+                <div class="res-bar"><span style="width:<%= pct %>%"></span></div>
+                <div class="res-remain-note"><%= pct %>% de la réservation est couverte.</div>
+            </div>
+            <% } %>
+        </div>
     </div>
     <% } %>
 
@@ -450,6 +578,7 @@
                        boolean isFromAirport = (hPrec == null);
                        String originLabel = isFromAirport ? "Aéroport" : hPrec;
                        String pxStatus = pxAff < pxDem ? "part" : (pxAff > capa ? "over" : "ok");
+                       int pxRestGlobal = Math.max(0, demandesParResa.getOrDefault(p.getResaId(), pxDem) - affectesParResa.getOrDefault(p.getResaId(), pxAff));
                        String pxMsg    = pxAff < pxDem
                            ? pxAff + " placés sur " + pxDem + " demandés (partiel)"
                            : (pxAff > capa ? pxAff + " passagers — dépasse la capacité !" : pxAff + " passager" + (pxAff>1?"s":"") + " pris en charge");
@@ -509,6 +638,9 @@
                             <span class="pax-sep"></span>
                             <span class="pax-detail"><%= pxMsg %></span>
                             <span class="pax-tag <%= pxStatus %>"><%= pxTagMsg %></span>
+                            <% if (pxRestGlobal > 0) { %>
+                            <span class="pax-remain">Reste global: <%= pxRestGlobal %></span>
+                            <% } %>
                         </div>
                     </div>
 
