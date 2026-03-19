@@ -277,6 +277,8 @@ public class PlanificationService {
             double distanceSegment;
             if (lieuPrecedentId == null) {
                 distanceSegment = distanceAeroportHotel;
+            } else if (lieuPrecedentId.equals(lieuActuelId)) {
+                distanceSegment = 0.0;
             } else {
                 distanceSegment = getDistanceEntreLieuxPourItineraire(lieuPrecedentId, lieuActuelId);
             }
@@ -545,15 +547,16 @@ public class PlanificationService {
     }
 
     private Planification save(Connection conn, Planification planification) throws SQLException {
-        String sql = "INSERT INTO planification (reservation_id, voiture_id, date_heure, distance_aeroport, date_heure_depart, date_heure_retour, nbtrajet) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO planification (reservation_id, voiture_id, date_heure, distance, distance_aeroport, date_heure_depart, date_heure_retour, nbtrajet) VALUES (?, ?, ?, ?, ?, ?, ?,?)";
         try (var pstmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setInt(1, planification.getResaId());
             pstmt.setInt(2, planification.getVoitureId());
             pstmt.setTimestamp(3, toSqlTimestamp(planification.getDateHeure()));
             pstmt.setDouble(4, planification.getDistance());
-            pstmt.setTimestamp(5, toSqlTimestamp(planification.getDateHeureDepart()));
-            pstmt.setTimestamp(6, toSqlTimestamp(planification.getDateHeureRetour()));
-            pstmt.setInt(7, planification.getNbTrajet() != null ? planification.getNbTrajet() : 1);
+            pstmt.setDouble(5, planification.getDistanceAeroportHotel());
+            pstmt.setTimestamp(6, toSqlTimestamp(planification.getDateHeureDepart()));
+            pstmt.setTimestamp(7, toSqlTimestamp(planification.getDateHeureRetour()));
+            pstmt.setInt(8, planification.getNbTrajet() != null ? planification.getNbTrajet() : 1);
             pstmt.executeUpdate();
 
             try (var rs = pstmt.getGeneratedKeys()) {

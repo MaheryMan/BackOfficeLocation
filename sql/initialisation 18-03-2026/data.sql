@@ -1,3 +1,4 @@
+-- Active: 1749037938113@@127.0.0.1@5432@location_S5
 -- =========================================================
 -- BackOfficeLocation - Donnees de test
 -- Dossier: initialisation 18-03-2026
@@ -73,8 +74,6 @@ INSERT INTO reservation (id_client, id_hotel, date_heure_arrivee, nombre_passage
     -- Groupe 08h00 - 08h30 (dans la fenetre de 30 min)
     (1, 1, '2026-03-18 08:00:00', 4),
     (2, 2, '2026-03-18 08:20:00', 3),
-
-    -- Groupe 10h00 - 10h30
     (3, 3, '2026-03-18 10:00:00', 6),
     (4, 1, '2026-03-18 10:25:00', 2);
 
