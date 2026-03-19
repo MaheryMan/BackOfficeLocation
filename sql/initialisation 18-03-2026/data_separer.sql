@@ -67,9 +67,9 @@ INSERT INTO distance (from_id_lieu, to_id_lieu, distance) VALUES
 -- Flotte volontairement limitee sur le groupe 08:15
 -- Capacites: 4 + 3 = 7
 -- ---------------------------------------------------------
-INSERT INTO voiture (numero, id_type_energie, capacite) VALUES
-    ('V201', 1, 4),
-    ('V202', 2, 3);
+INSERT INTO voiture (numero, id_type_energie, capacite, heure_disponibilite) VALUES
+    ('V201', 1, 4, '08:00'),
+    ('V202', 2, 3, '11:00');
 
 -- ---------------------------------------------------------
 -- Clients
