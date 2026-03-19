@@ -55,7 +55,8 @@ public class VoitureService {
                         rs.getInt("id"),
                         rs.getString("numero"),
                         te,
-                        rs.getInt("capacite")
+                        rs.getInt("capacite"),
+                        rs.getString("heure_disponibilite")
                 );
             }
         }
@@ -95,7 +96,8 @@ public class VoitureService {
                     rs.getInt("id"),
                     rs.getString("numero"),
                     te,
-                    rs.getInt("capacite")
+                    rs.getInt("capacite"),
+                    rs.getString("heure_disponibilite")
                 );
                 voitures.add(voiture);
             }

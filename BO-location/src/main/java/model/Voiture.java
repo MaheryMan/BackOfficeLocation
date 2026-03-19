@@ -13,14 +13,25 @@ public class Voiture {
 
     private int capacite;
 
+    private String heureDisponibilite;
+
+    public String getHeureDisponibilite() {
+        return heureDisponibilite;
+    }
+
+    public void setHeureDisponibilite(String heureDisponibilite) {
+        this.heureDisponibilite = heureDisponibilite;
+    }
+
     public Voiture() {
     }
 
-    public Voiture(Integer id, String numero, TypeEnergie typeEnergie, int capacite) {
+    public Voiture(Integer id, String numero, TypeEnergie typeEnergie, int capacite, String heureDisponibilite) {
         this.id = id;
         this.numero = numero;
         this.typeEnergie = typeEnergie;
         this.capacite = capacite;
+        this.heureDisponibilite = heureDisponibilite;
     }
 
     public Integer getId() {
@@ -58,7 +69,4 @@ public class Voiture {
     public boolean estDiesel() {
         return typeEnergie != null && "diesel".equalsIgnoreCase(typeEnergie.getLibelle());
     }
-
-
-
 }
