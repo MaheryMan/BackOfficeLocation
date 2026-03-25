@@ -13,7 +13,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 import database.ConnexDB;
@@ -216,10 +215,15 @@ public class PlanificationService {
                     .map(r -> parseDateTime(r.getDateHeureArrivee()))
                     .max(LocalDateTime::compareTo)
                     .orElse(LocalDateTime.now());
-            String heureDepartGroupeStr = formatDateTime(heureDepartGroupe);
 
             List<Reservation> reservationsOrdonnees = new ArrayList<>(reservationsGroupe);
             reservationsOrdonnees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
+
+                heureDepartGroupe = calculerHeureDepartEffectiveGroupe(
+                    heureDepartGroupe,
+                    reservationsOrdonnees,
+                    etatsVoitures);
+                String heureDepartGroupeStr = formatDateTime(heureDepartGroupe);
 
             Map<Reservation, Integer> passagersRestants = new HashMap<>();
             for (Reservation reservation : reservationsOrdonnees) {
@@ -603,15 +607,9 @@ public class PlanificationService {
             .filter(v -> Math.min(v.getCapacite(), nombrePassagers) == maxAffectable)
                 .collect(Collectors.toList());
 
-        if (maxAffectable >= nombrePassagers) {
-            int capaciteMin = voituresCapaciteMin.stream()
-                .mapToInt(Voiture::getCapacite)
-                .min()
-                .orElse(Integer.MAX_VALUE);
-            voituresCapaciteMin = voituresCapaciteMin.stream()
-                .filter(v -> v.getCapacite() == capaciteMin)
-                .collect(Collectors.toList());
-        }
+        // Important: ne pas appliquer ici un "plus petite capacite" strict,
+        // sinon une essence peut etre choisie avant d'arriver au critere diesel.
+        // La capacite est deja couverte par maxAffectable ci-dessus.
 
         // Si une seule voiture, la retourner
         if (voituresCapaciteMin.size() == 1) {
@@ -631,24 +629,96 @@ public class PlanificationService {
             return voituresMoinsTrajets.get(0);
         }
 
-        // Apres priorite nb de trajets, preferer les diesel
+        // Priorite carburant seulement apres capacite + nb trajets.
         List<Voiture> voituresDiesel = voituresMoinsTrajets.stream()
                 .filter(Voiture::estDiesel)
                 .collect(Collectors.toList());
 
         if (!voituresDiesel.isEmpty()) {
-            // Si toutes sont diesel ou plusieurs diesel, choisir aléatoirement
-            if (voituresDiesel.size() == 1) {
-                return voituresDiesel.get(0);
-            } else {
-                Random random = new Random();
-                return voituresDiesel.get(random.nextInt(voituresDiesel.size()));
+            return choisirVoitureDeterministe(voituresDiesel);
+        }
+
+        return choisirVoitureDeterministe(voituresMoinsTrajets);
+    }
+
+    private Voiture choisirVoitureDeterministe(List<Voiture> voitures) {
+        return voitures.stream()
+                .min(Comparator
+                        .comparing((Voiture v) -> v.getId() != null ? v.getId() : Integer.MAX_VALUE)
+                        .thenComparing(v -> v.getNumero() != null ? v.getNumero() : ""))
+                .orElse(null);
+    }
+
+    private LocalDateTime calculerHeureDepartEffectiveGroupe(
+            LocalDateTime heureDepartTheorique,
+            List<Reservation> reservationsOrdonnees,
+            Map<Voiture, EtatVoiture> etatsVoitures) {
+        if (heureDepartTheorique == null || reservationsOrdonnees == null || reservationsOrdonnees.isEmpty()) {
+            return heureDepartTheorique != null ? heureDepartTheorique : LocalDateTime.now();
+        }
+
+        int plusGrandeDemande = reservationsOrdonnees.stream()
+                .mapToInt(this::getNombrePassagers)
+                .max()
+                .orElse(0);
+
+        if (plusGrandeDemande <= 0) {
+            return heureDepartTheorique;
+        }
+
+        LocalDateTime meilleureDisponibilite = etatsVoitures.entrySet().stream()
+                .filter(e -> e.getKey() != null && e.getKey().getCapacite() >= plusGrandeDemande)
+                .map(e -> calculerDisponibiliteVoitureDepuis(e.getKey(), e.getValue(), heureDepartTheorique))
+                .min(LocalDateTime::compareTo)
+                .orElse(heureDepartTheorique);
+
+        return meilleureDisponibilite.isAfter(heureDepartTheorique)
+                ? meilleureDisponibilite
+                : heureDepartTheorique;
+    }
+
+    private LocalDateTime calculerDisponibiliteVoitureDepuis(
+            Voiture voiture,
+            EtatVoiture etat,
+            LocalDateTime reference) {
+        LocalDateTime disponibilite = reference;
+
+        if (etat != null && etat.disponibleAPartir != null && etat.disponibleAPartir.isAfter(disponibilite)) {
+            disponibilite = etat.disponibleAPartir;
+        }
+
+        LocalTime heureMini = extraireHeureDisponibiliteVoiture(voiture);
+        if (heureMini != null) {
+            LocalDateTime borneHoraireJour = LocalDateTime.of(disponibilite.toLocalDate(), heureMini);
+            if (borneHoraireJour.isAfter(disponibilite)) {
+                disponibilite = borneHoraireJour;
             }
         }
 
-        // Si aucune diesel, choisir aleatoirement parmi les moins sollicitees
-        Random random = new Random();
-        return voituresMoinsTrajets.get(random.nextInt(voituresMoinsTrajets.size()));
+        return disponibilite;
+    }
+
+    private LocalTime extraireHeureDisponibiliteVoiture(Voiture voiture) {
+        if (voiture == null || voiture.getHeureDisponibilite() == null || voiture.getHeureDisponibilite().isBlank()) {
+            return null;
+        }
+
+        String valeur = voiture.getHeureDisponibilite().trim();
+        if (valeur.contains("-") || valeur.contains("T") || valeur.contains(" ")) {
+            return extraireHeureDepuisDateHeure(valeur);
+        }
+
+        try {
+            return LocalTime.parse(valeur, DateTimeFormatter.ofPattern("HH:mm:ss"));
+        } catch (Exception ignored) {
+            // Continuer avec HH:mm
+        }
+
+        try {
+            return LocalTime.parse(valeur, DateTimeFormatter.ofPattern("HH:mm"));
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private boolean estDisponibleSelonHeureVoiture(Voiture voiture, LocalDateTime horaireReservation) {

@@ -20,9 +20,9 @@ public class ConnexDB {
 
                 // CAS LOCAL (si DATABASE_URL n'existe pas)
                 if (databaseUrl == null) {
-                    String url = "jdbc:postgresql://localhost:5432/location_s5";
+                    String url = "jdbc:postgresql://localhost:5432/location_S5";
                     String user = "postgres";
-                    String password = "karen";
+                    String password = "max";
                     connection = DriverManager.getConnection(url, user, password);
                 }
                 // CAS SUPABASE (avec DATABASE_URL, DATABASE_USER, DATABASE_PASSWORD)

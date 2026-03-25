@@ -1,8 +1,6 @@
 package model;
 import annotations.BaseName;
 
-import java.util.List;
-
 public class Voiture {
     private Integer id;
     
@@ -67,6 +65,9 @@ public class Voiture {
     }
 
     public boolean estDiesel() {
-        return typeEnergie != null && "diesel".equalsIgnoreCase(typeEnergie.getLibelle());
+        if (typeEnergie == null || typeEnergie.getLibelle() == null) {
+            return false;
+        }
+        return "diesel".equalsIgnoreCase(typeEnergie.getLibelle().trim());
     }
 }
