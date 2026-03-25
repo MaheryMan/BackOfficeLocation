@@ -264,10 +264,7 @@ public class PlanificationService {
                         Reservation resaSuivante = trouverReservationPourCompleterVoiture(
                                 passagersRestants,
                                 reservationPrincipale,
-                                capaciteRestante,
-                                voitureAssignee,
-                                heureDepartGroupe,
-                                etatsVoitures);
+                                capaciteRestante);
                         if (resaSuivante == null) {
                             break;
                         }
@@ -535,18 +532,9 @@ public class PlanificationService {
         private Reservation trouverReservationPourCompleterVoiture(
             Map<Reservation, Integer> passagersRestants,
             Reservation reservationPrincipale,
-            int capaciteRestante,
-            Voiture voitureEnCours,
-            LocalDateTime horaire,
-            Map<Voiture, EtatVoiture> etatsVoitures) {
+            int capaciteRestante) {
         List<Reservation> candidates = passagersRestants.entrySet().stream()
             .filter(e -> e.getKey() != reservationPrincipale && e.getValue() != null && e.getValue() > 0)
-            .filter(e -> !aMeilleureVoitureDisponiblePourReservation(
-                    e.getValue(),
-                    capaciteRestante,
-                    voitureEnCours,
-                    horaire,
-                    etatsVoitures))
             .map(Map.Entry::getKey)
             .collect(Collectors.toList());
 
@@ -582,45 +570,6 @@ public class PlanificationService {
 
         return null;
         }
-
-    private boolean aMeilleureVoitureDisponiblePourReservation(
-            int passagersReservation,
-            int capaciteRestanteVoitureEnCours,
-            Voiture voitureEnCours,
-            LocalDateTime horaire,
-            Map<Voiture, EtatVoiture> etatsVoitures) {
-        if (passagersReservation <= 0 || capaciteRestanteVoitureEnCours <= 0
-                || horaire == null || etatsVoitures == null) {
-            return false;
-        }
-
-        int ecartAvecResteVoitureCourante = Math.abs(passagersReservation - capaciteRestanteVoitureEnCours);
-        int meilleurEcartAutreVoiture = Integer.MAX_VALUE;
-
-        for (Map.Entry<Voiture, EtatVoiture> entry : etatsVoitures.entrySet()) {
-            Voiture voiture = entry.getKey();
-            EtatVoiture etat = entry.getValue();
-
-            if (voiture == null || etat == null || voiture == voitureEnCours) {
-                continue;
-            }
-
-            if (voiture.getCapacite() < passagersReservation) {
-                continue;
-            }
-
-            if (!estDisponibleSelonHeureVoiture(voiture, horaire) || !etat.estDisponible(horaire)) {
-                continue;
-            }
-
-            int ecart = voiture.getCapacite() - passagersReservation;
-            if (ecart < meilleurEcartAutreVoiture) {
-                meilleurEcartAutreVoiture = ecart;
-            }
-        }
-
-        return meilleurEcartAutreVoiture < ecartAvecResteVoitureCourante;
-    }
 
     private Voiture trouverMeilleureVoiture(int nombrePassagers, LocalDateTime horaire,
             Map<Voiture, EtatVoiture> etatsVoitures) {
