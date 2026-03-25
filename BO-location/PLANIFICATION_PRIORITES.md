@@ -12,7 +12,11 @@ Ce document decrit l'ordre de priorite applique dans la logique actuelle de plan
 
 ## 2. Priorite d'Assignation des Voitures (Par Groupe)
 
-1. Calculer l'heure de depart du groupe = heure d'arrivee maximale du groupe.
+1. Calculer l'heure de depart theorique du groupe = heure d'arrivee maximale du groupe.
+2. Ajuster ensuite l'heure de depart effective du groupe:
+   - on identifie la plus grande reservation du groupe,
+   - on cherche la premiere disponibilite d'une voiture capable de la prendre,
+   - si cette disponibilite est apres l'heure theorique, tout le groupe est decale a cette heure.
 2. Prendre les reservations non affectees du groupe.
 3. Trier ces reservations par nombre de passagers decroissant (les plus grandes d'abord).
 4. Pour chaque reservation principale:
@@ -23,15 +27,17 @@ Ce document decrit l'ordre de priorite applique dans la logique actuelle de plan
 
 Une voiture est candidate si:
 
-1. Sa capacite >= nombre de passagers de la reservation principale.
-2. Elle est disponible a l'heure de depart du groupe (`heure_depart_groupe >= date_heure_retour` de son dernier trajet).
+1. Sa capacite est positive.
+2. Elle respecte sa contrainte horaire (`heure_disponibilite`).
+3. Elle est libre a l'heure de depart du groupe (`heure_depart_groupe >= date_heure_retour` de son dernier trajet).
 
 Puis application des priorites:
 
-1. Capacite minimale suffisante (best-fit): on choisit les plus petites voitures qui conviennent.
+1. Capacite/charge: on retient d'abord les voitures qui peuvent affecter le plus de passagers sur la reservation courante (`maxAffectable`).
+2. Si cette valeur couvre toute la reservation, on applique un best-fit (plus petite capacite suffisante).
 2. Parmi elles, priorite aux voitures avec le moins de trajets deja effectues (`nbtrajet` minimal).
 3. Ensuite seulement, preference diesel.
-4. En cas d'egalite finale, choix aleatoire.
+4. En cas d'egalite finale, choix deterministe (ID puis numero de voiture).
 
 ## 4. Remplissage d'une Voiture Deja Choisie
 
@@ -39,8 +45,9 @@ Apres avoir choisi une voiture pour la reservation principale:
 
 1. On ajoute d'autres reservations du meme groupe tant que la capacite restante le permet.
 2. Chaque reservation ajoutee diminue la capacite restante de la voiture.
-3. Toutes ces reservations partagent la meme heure de depart groupe.
+3. Toutes ces reservations partagent la meme heure de depart groupe (heure ajustee du groupe).
 4. A la fin du circuit complet, la voiture recupere sa capacite totale pour un futur trajet.
+5. Si des passagers restent non affectes en fin de groupe, ils sont reportes sur le groupe suivant.
 
 ## 5. Ordre de Passage des Hotels (Dans une Meme Voiture/Meme Groupe)
 
