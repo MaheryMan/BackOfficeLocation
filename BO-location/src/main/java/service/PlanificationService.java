@@ -11,8 +11,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import database.ConnexDB;
@@ -63,21 +65,17 @@ public class PlanificationService {
 
     public List<Planification> getPlanification(LocalDate date) throws SQLException {
         List<Reservation> reservations = getReservationsForDate(date);
-
         List<Voiture> voitures = voitureService.readAll();
-
         List<Reservation> reservationsTries = triReservationParHeureArrivee(reservations);
 
         List<List<Reservation>> groupes = regrouperParTempsAttente(parametreService.getParametre().getTempsAttente(),
                 reservationsTries);
                 
         for (List<Reservation> groupe : groupes) {
-            //comparer par distance aéroport
             groupe.sort(Comparator.comparing(this::getDistanceAeroportAllerRetourPourTri));
         }
 
-        List<Planification> planifications = assignerVoitures(groupes, voitures);
-        return planifications;
+        return assignerVoitures(groupes, voitures);
     }
 
     private List<Reservation> getReservationsForDate(LocalDate date) throws SQLException {
@@ -95,17 +93,6 @@ public class PlanificationService {
         }
 
         return reservationsFiltered;
-    }
-
-    // Raha anova ordre de priorite dia ito fostiny no ampifamadihana
-
-    private List<Reservation> trierReservations(List<Reservation> reservations) {
-        return reservations.stream()
-                .sorted(Comparator
-                        .comparing(this::getDistanceAeroportAllerRetourPourTri)
-                        .thenComparing((Reservation r) -> parseDateTime(r.getDateHeureArrivee()))
-                        .thenComparing(Reservation::getNombrePassager, Comparator.reverseOrder()))
-                .collect(Collectors.toList());
     }
 
     private double getDistanceAeroportAllerRetourPourTri(Reservation reservation) {
@@ -162,9 +149,7 @@ public class PlanificationService {
 
     private LocalDateTime parseDateTime(String dateTimeStr) {
         try {
-
             String normalized = dateTimeStr.replace("T", " ");
-            // Supprimer les décimales (ex: "2026-03-04 08:00:00.0" → "2026-03-04 08:00:00")
             if (normalized.contains(".")) {
                 normalized = normalized.substring(0, normalized.indexOf("."));
             }
@@ -179,18 +164,11 @@ public class PlanificationService {
         }
     }
 
-        /**
-        * Assigne les voitures par groupe (bin packing simple):
-        * - On choisit une voiture pour une réservation non affectée
-        * - On remplit cette voiture avec d'autres réservations du même groupe tant qu'il reste de la capacité
-        * - Puis on passe à une nouvelle voiture
-        * - L'heure de départ de tout le groupe est l'heure max des réservations du groupe
-        */
-   private List<Planification> assignerVoitures(List<List<Reservation>> groupes, List<Voiture> voitures) {
+    private List<Planification> assignerVoitures(List<List<Reservation>> groupes, List<Voiture> voitures) {
         List<Planification> planifications = new ArrayList<>();
         var parametre = parametreService.getParametre();
         Double vitesseMoyenne = parametre != null ? parametre.getVitesseMoyenne() : null;
-        int tempsAttenteRetour = 30; // Nouvelle règle : 30 minutes d'attente max au retour
+        int tempsAttenteRetour = 30;
 
         Map<Voiture, EtatVoiture> etatsVoitures = new HashMap<>();
         for (Voiture voiture : voitures) {
@@ -200,7 +178,6 @@ public class PlanificationService {
         List<Reservation> reliquats = new ArrayList<>();
         int indexGroupe = 0;
 
-        // On boucle tant qu'il y a des groupes à traiter OU des reliquats en attente
         while (indexGroupe < groupes.size() || !reliquats.isEmpty()) {
             
             LocalDateTime nextGroupTime = null;
@@ -208,7 +185,6 @@ public class PlanificationService {
                 nextGroupTime = parseDateTime(groupes.get(indexGroupe).get(0).getDateHeureArrivee());
             }
 
-            // Chercher si une voiture est de retour (nombreTrajets > 0)
             LocalDateTime earliestReturnTime = null;
             if (!reliquats.isEmpty()) {
                 for (Map.Entry<Voiture, EtatVoiture> entry : etatsVoitures.entrySet()) {
@@ -221,56 +197,52 @@ public class PlanificationService {
                 }
             }
 
-            // Décider si on crée un "Groupe Virtuel" pour une voiture de retour
             boolean processReturningCar = false;
             if (earliestReturnTime != null) {
                 if (nextGroupTime == null) {
                     processReturningCar = true;
                 } else if (!earliestReturnTime.isAfter(nextGroupTime)) {
-                    processReturningCar = true; // La voiture est de retour avant l'arrivée du prochain groupe
+                    processReturningCar = true; 
                 }
             }
 
             if (!processReturningCar && indexGroupe >= groupes.size()) {
-                break; // Sécurité : Plus de groupes et pas de voiture de retour disponible pour les reliquats
+                break; 
             }
 
             if (processReturningCar) {
-                // --- LOGIQUE: VOITURE DE RETOUR ---
                 LocalDateTime limiteAttente = earliestReturnTime.plusMinutes(tempsAttenteRetour);
 
-                List<Reservation> candidats = new ArrayList<>(reliquats);
+                List<Reservation> prioritaires = new ArrayList<>(reliquats);
+                prioritaires = fusionnerReservationsParId(prioritaires);
                 reliquats.clear();
 
-                // On mélange les reliquats avec TOUS les groupes qui atterrissent dans la fenêtre de 30 mins
+                List<Reservation> normaux = new ArrayList<>();
                 while (indexGroupe < groupes.size()) {
                     List<Reservation> nextGrp = groupes.get(indexGroupe);
                     LocalDateTime grpArrival = parseDateTime(nextGrp.get(0).getDateHeureArrivee());
                     if (!grpArrival.isAfter(limiteAttente)) {
-                        candidats.addAll(nextGrp);
-                        indexGroupe++; // Groupe absorbé
+                        normaux.addAll(nextGrp);
+                        indexGroupe++; 
                     } else {
                         break;
                     }
                 }
+                normaux = fusionnerReservationsParId(normaux);
 
-                candidats = fusionnerReservationsParId(candidats);
-                reliquats.addAll(traiterAssignationCandidats(candidats, etatsVoitures, planifications, vitesseMoyenne, limiteAttente));
+                reliquats.addAll(traiterAssignationCandidats(prioritaires, normaux, etatsVoitures, planifications, vitesseMoyenne, limiteAttente));
 
             } else {
-                // --- LOGIQUE: GROUPE NORMAL (CLASSIQUE) ---
-                List<Reservation> candidats = new ArrayList<>(groupes.get(indexGroupe));
-                candidats.addAll(reliquats);
-                reliquats.clear();
-                
-                candidats = fusionnerReservationsParId(candidats);
+                List<Reservation> prioritaires = new ArrayList<>();
+                List<Reservation> normaux = new ArrayList<>(groupes.get(indexGroupe));
+                normaux = fusionnerReservationsParId(normaux);
 
-                LocalDateTime heureDepartGroupe = candidats.stream()
+                LocalDateTime heureDepartGroupe = normaux.stream()
                         .map(r -> parseDateTime(r.getDateHeureArrivee()))
                         .max(LocalDateTime::compareTo)
                         .orElse(LocalDateTime.now());
 
-                reliquats.addAll(traiterAssignationCandidats(candidats, etatsVoitures, planifications, vitesseMoyenne, heureDepartGroupe));
+                reliquats.addAll(traiterAssignationCandidats(prioritaires, normaux, etatsVoitures, planifications, vitesseMoyenne, heureDepartGroupe));
                 
                 indexGroupe++;
             }
@@ -279,21 +251,36 @@ public class PlanificationService {
         return planifications;
     }
 
-    // Nouvelle méthode extrayant la logique de traitement d'une liste dynamique de candidats
     private List<Reservation> traiterAssignationCandidats(
-            List<Reservation> candidats,
+            List<Reservation> prioritaires,
+            List<Reservation> normaux,
             Map<Voiture, EtatVoiture> etatsVoitures,
             List<Planification> planifications,
             Double vitesseMoyenne,
             LocalDateTime limiteTempsRecherche) {
 
         List<Reservation> nonAssignes = new ArrayList<>();
-        if (candidats == null || candidats.isEmpty()) {
-            return nonAssignes;
+        
+        Set<Integer> idsPrioritaires = new HashSet<>();
+        if (prioritaires != null) {
+            for (Reservation p : prioritaires) {
+                if (p.getId() != null) idsPrioritaires.add(p.getId());
+            }
         }
 
-        List<Reservation> reservationsOrdonnees = new ArrayList<>(candidats);
-        reservationsOrdonnees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
+        List<Reservation> prioritairesOrdonnees = new ArrayList<>(prioritaires != null ? prioritaires : new ArrayList<>());
+        prioritairesOrdonnees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
+
+        List<Reservation> normauxOrdonnees = new ArrayList<>(normaux != null ? normaux : new ArrayList<>());
+        normauxOrdonnees.sort(Comparator.comparing(Reservation::getNombrePassager).reversed());
+
+        List<Reservation> reservationsOrdonnees = new ArrayList<>();
+        reservationsOrdonnees.addAll(prioritairesOrdonnees);
+        reservationsOrdonnees.addAll(normauxOrdonnees);
+
+        if (reservationsOrdonnees.isEmpty()) {
+            return nonAssignes;
+        }
 
         Map<Reservation, Integer> passagersRestants = new HashMap<>();
         for (Reservation reservation : reservationsOrdonnees) {
@@ -304,28 +291,26 @@ public class PlanificationService {
             while (passagersRestants.getOrDefault(reservationPrincipale, 0) > 0) {
                 int passagersRestantsPrincipale = passagersRestants.getOrDefault(reservationPrincipale, 0);
 
-                // Filtrer les actifs pour l'heure de recherche dynamique
                 List<Reservation> actifs = reservationsOrdonnees.stream()
                         .filter(r -> passagersRestants.getOrDefault(r, 0) > 0)
                         .collect(Collectors.toList());
                         
                 if (actifs.isEmpty()) break;
 
-                LocalDateTime maxArrival = actifs.stream()
-                        .map(r -> parseDateTime(r.getDateHeureArrivee()))
-                        .max(LocalDateTime::compareTo)
-                        .orElse(limiteTempsRecherche);
+                // CORRECTION : On respecte strictement la limite de temps prévue pour le groupe, 
+                // on ne repousse plus la recherche dans le futur !
+                LocalDateTime heureRecherche = limiteTempsRecherche;
 
-                LocalDateTime heureRecherche = maxArrival.isAfter(limiteTempsRecherche) ? maxArrival : limiteTempsRecherche;
-                heureRecherche = calculerHeureDepartEffectiveGroupe(heureRecherche, actifs, etatsVoitures);
+                boolean isReliquat = idsPrioritaires.contains(reservationPrincipale.getId());
 
                 Voiture voitureAssignee = trouverMeilleureVoiture(
                         passagersRestantsPrincipale,
                         heureRecherche,
-                        etatsVoitures);
+                        etatsVoitures,
+                        isReliquat); 
 
                 if (voitureAssignee == null) {
-                    break;
+                    break; 
                 }
 
                 EtatVoiture etat = etatsVoitures.get(voitureAssignee);
@@ -341,10 +326,15 @@ public class PlanificationService {
                 passagersRestants.put(reservationPrincipale, passagersRestantsPrincipale - affectesPrincipale);
                 capaciteRestante -= affectesPrincipale;
 
-                // Combler les trous (Minimum < Supérieur)
                 while (capaciteRestante > 0) {
                     Reservation resaSuivante = trouverReservationPourCompleterVoiture(
-                            passagersRestants, reservationPrincipale, capaciteRestante);
+                            passagersRestants, 
+                            reservationPrincipale, 
+                            capaciteRestante,
+                            voitureAssignee,
+                            etat,
+                            idsPrioritaires); 
+                            
                     if (resaSuivante == null) {
                         break;
                     }
@@ -358,7 +348,6 @@ public class PlanificationService {
                     passagersRestants.put(resaSuivante, nbPassagersSuivant - passagersAffectes);
                 }
 
-                // Départ effectif basé sur les passagers réellement dans CETTE voiture
                 LocalDateTime maxArrivalOfAssigned = reservationsAffecteesVoiture.stream()
                     .map(a -> parseDateTime(a.reservation.getDateHeureArrivee()))
                     .max(LocalDateTime::compareTo)
@@ -366,7 +355,6 @@ public class PlanificationService {
                 
                 LocalDateTime dispoVoiture = calculerDisponibiliteVoitureDepuis(voitureAssignee, etat, LocalDateTime.MIN);
                 
-                // Si la voiture arrive plus tard que les passagers, elle part à son arrivée. Sinon, dès que le dernier passager est là.
                 LocalDateTime heureDepartEffective = maxArrivalOfAssigned;
                 if (dispoVoiture.isAfter(heureDepartEffective)) {
                     heureDepartEffective = dispoVoiture;
@@ -385,7 +373,6 @@ public class PlanificationService {
             }
         }
 
-        // On repousse le reste dans la liste des non-assignés pour la prochaine itération (ou retour final)
         for (Map.Entry<Reservation, Integer> entry : passagersRestants.entrySet()) {
             int restants = entry.getValue() != null ? entry.getValue() : 0;
             if (restants > 0) {
@@ -394,6 +381,132 @@ public class PlanificationService {
         }
 
         return nonAssignes;
+    }
+
+    private Voiture trouverMeilleureVoiture(int nombrePassagers, LocalDateTime horaire,
+            Map<Voiture, EtatVoiture> etatsVoitures, boolean pourReliquat) {
+        List<Voiture> voituresCandidates = new ArrayList<>();
+
+        for (Map.Entry<Voiture, EtatVoiture> entry : etatsVoitures.entrySet()) {
+            Voiture voiture = entry.getKey();
+            EtatVoiture etat = entry.getValue();
+
+            if (pourReliquat && etat.getNombreTrajets() == 0) {
+                continue;
+            }
+
+            if (voiture.getCapacite() > 0
+                    && estDisponibleSelonHeureVoiture(voiture, horaire)
+                    && etat.estDisponible(horaire)) {
+                voituresCandidates.add(voiture);
+            }
+        }
+
+        if (voituresCandidates.isEmpty()) {
+            return null;
+        }
+
+        int maxAffectable = voituresCandidates.stream()
+            .mapToInt(v -> Math.min(v.getCapacite(), nombrePassagers))
+            .max()
+            .orElse(0);
+
+        if (maxAffectable <= 0) {
+            return null;
+        }
+
+        List<Voiture> voituresCapaciteMin = voituresCandidates.stream()
+            .filter(v -> Math.min(v.getCapacite(), nombrePassagers) == maxAffectable)
+                .collect(Collectors.toList());
+
+        if (voituresCapaciteMin.size() == 1) {
+            return voituresCapaciteMin.get(0);
+        }
+
+        int minTrajets = voituresCapaciteMin.stream()
+            .mapToInt(v -> etatsVoitures.get(v).getNombreTrajets())
+            .min()
+            .orElse(Integer.MAX_VALUE);
+
+        List<Voiture> voituresMoinsTrajets = voituresCapaciteMin.stream()
+            .filter(v -> etatsVoitures.get(v).getNombreTrajets() == minTrajets)
+            .collect(Collectors.toList());
+
+        if (voituresMoinsTrajets.size() == 1) {
+            return voituresMoinsTrajets.get(0);
+        }
+
+        List<Voiture> voituresDiesel = voituresMoinsTrajets.stream()
+                .filter(Voiture::estDiesel)
+                .collect(Collectors.toList());
+
+        if (!voituresDiesel.isEmpty()) {
+            return choisirVoitureDeterministe(voituresDiesel);
+        }
+
+        return choisirVoitureDeterministe(voituresMoinsTrajets);
+    }
+
+    private Reservation trouverReservationPourCompleterVoiture(
+            Map<Reservation, Integer> passagersRestants,
+            Reservation reservationPrincipale,
+            int capaciteRestante,
+            Voiture voiture,
+            EtatVoiture etatVoiture,
+            Set<Integer> idsPrioritaires) {
+        
+        boolean estVoitureNeuve = (etatVoiture.getNombreTrajets() == 0);
+
+        List<Reservation> candidates = passagersRestants.entrySet().stream()
+            .filter(e -> e.getKey() != reservationPrincipale && e.getValue() != null && e.getValue() > 0)
+            .map(Map.Entry::getKey)
+            .filter(r -> {
+                if (estVoitureNeuve && idsPrioritaires.contains(r.getId())) {
+                    return false;
+                }
+                return true;
+            })
+            .collect(Collectors.toList());
+
+        if (candidates.isEmpty()) {
+            return null;
+        }
+
+        Comparator<Reservation> tieBreaker = Comparator
+            .comparing((Reservation r) -> parseDateTime(r.getDateHeureArrivee()))
+            .thenComparing(r -> r.getId() != null ? r.getId() : Integer.MAX_VALUE);
+
+        List<Reservation> superieurOuEgal = candidates.stream()
+            .filter(r -> passagersRestants.getOrDefault(r, 0) >= capaciteRestante)
+            .sorted(Comparator
+                .comparing((Reservation r) -> passagersRestants.getOrDefault(r, 0))
+                .thenComparing(tieBreaker))
+            .collect(Collectors.toList());
+
+        if (!superieurOuEgal.isEmpty()) {
+            return superieurOuEgal.get(0);
+        }
+
+        List<Reservation> inferieur = candidates.stream()
+            .filter(r -> passagersRestants.getOrDefault(r, 0) < capaciteRestante)
+            .sorted(Comparator
+                .comparing((Reservation r) -> passagersRestants.getOrDefault(r, 0), Comparator.reverseOrder())
+                .thenComparing(tieBreaker))
+            .collect(Collectors.toList());
+
+        if (!inferieur.isEmpty()) {
+            return inferieur.get(0);
+        }
+
+        return null;
+    }
+
+    private Voiture choisirVoitureDeterministe(List<Voiture> voitures) {
+        return voitures.stream()
+                .min(Comparator
+                        .comparing((Voiture v) -> v.getId() != null ? v.getId() : Integer.MAX_VALUE)
+                        .thenComparing(v -> v.getNumero() != null ? v.getNumero() : ""))
+                .orElse(null);
     }
 
     private List<Reservation> fusionnerReservationsParId(List<Reservation> reservations) {
@@ -440,11 +553,9 @@ public class PlanificationService {
             reservationsPourItineraire.add(affectation.reservation);
         }
 
-        // Itineraire: aeroport -> hotel le plus proche, puis proche en proche -> aeroport
-        List<Reservation> reservationsTrieesParProximite = construireOrdreItineraireProcheEnProche(
-            reservationsPourItineraire);
-
+        List<Reservation> reservationsTrieesParProximite = construireOrdreItineraireProcheEnProche(reservationsPourItineraire);
         double distanceTotaleCircuit = calculerDistanceTotaleCircuit(reservationsTrieesParProximite);
+        
         LocalDateTime dateHeureRetourCommune = calculerDateHeureRetour(
                 heureDepartGroupeStr,
                 distanceTotaleCircuit,
@@ -621,150 +732,6 @@ public class PlanificationService {
         return clone;
     }
 
-        private Reservation trouverReservationPourCompleterVoiture(
-            Map<Reservation, Integer> passagersRestants,
-            Reservation reservationPrincipale,
-            int capaciteRestante) {
-        List<Reservation> candidates = passagersRestants.entrySet().stream()
-            .filter(e -> e.getKey() != reservationPrincipale && e.getValue() != null && e.getValue() > 0)
-            .map(Map.Entry::getKey)
-            .collect(Collectors.toList());
-
-        if (candidates.isEmpty()) {
-            return null;
-        }
-
-        Comparator<Reservation> tieBreaker = Comparator
-            .comparing((Reservation r) -> parseDateTime(r.getDateHeureArrivee()))
-            .thenComparing(r -> r.getId() != null ? r.getId() : Integer.MAX_VALUE);
-
-        List<Reservation> superieurOuEgal = candidates.stream()
-            .filter(r -> passagersRestants.getOrDefault(r, 0) >= capaciteRestante)
-            .sorted(Comparator
-                .comparing((Reservation r) -> passagersRestants.getOrDefault(r, 0))
-                .thenComparing(tieBreaker))
-            .collect(Collectors.toList());
-
-        if (!superieurOuEgal.isEmpty()) {
-            return superieurOuEgal.get(0);
-        }
-
-        List<Reservation> inferieur = candidates.stream()
-            .filter(r -> passagersRestants.getOrDefault(r, 0) < capaciteRestante)
-            .sorted(Comparator
-                .comparing((Reservation r) -> passagersRestants.getOrDefault(r, 0), Comparator.reverseOrder())
-                .thenComparing(tieBreaker))
-            .collect(Collectors.toList());
-
-        if (!inferieur.isEmpty()) {
-            return inferieur.get(0);
-        }
-
-        return null;
-        }
-
-    private Voiture trouverMeilleureVoiture(int nombrePassagers, LocalDateTime horaire,
-            Map<Voiture, EtatVoiture> etatsVoitures) {
-        List<Voiture> voituresCandidates = new ArrayList<>();
-
-        for (Map.Entry<Voiture, EtatVoiture> entry : etatsVoitures.entrySet()) {
-            Voiture voiture = entry.getKey();
-            EtatVoiture etat = entry.getValue();
-
-            if (voiture.getCapacite() > 0
-                    && estDisponibleSelonHeureVoiture(voiture, horaire)
-                    && etat.estDisponible(horaire)) {
-                voituresCandidates.add(voiture);
-            }
-        }
-
-        if (voituresCandidates.isEmpty()) {
-            return null;
-        }
-
-        int maxAffectable = voituresCandidates.stream()
-            .mapToInt(v -> Math.min(v.getCapacite(), nombrePassagers))
-            .max()
-            .orElse(0);
-
-        if (maxAffectable <= 0) {
-            return null;
-        }
-
-        List<Voiture> voituresCapaciteMin = voituresCandidates.stream()
-            .filter(v -> Math.min(v.getCapacite(), nombrePassagers) == maxAffectable)
-                .collect(Collectors.toList());
-
-        // Important: ne pas appliquer ici un "plus petite capacite" strict,
-        // sinon une essence peut etre choisie avant d'arriver au critere diesel.
-        // La capacite est deja couverte par maxAffectable ci-dessus.
-
-        // Si une seule voiture, la retourner
-        if (voituresCapaciteMin.size() == 1) {
-            return voituresCapaciteMin.get(0);
-        }
-
-        int minTrajets = voituresCapaciteMin.stream()
-            .mapToInt(v -> etatsVoitures.get(v).getNombreTrajets())
-            .min()
-            .orElse(Integer.MAX_VALUE);
-
-        List<Voiture> voituresMoinsTrajets = voituresCapaciteMin.stream()
-            .filter(v -> etatsVoitures.get(v).getNombreTrajets() == minTrajets)
-            .collect(Collectors.toList());
-
-        if (voituresMoinsTrajets.size() == 1) {
-            return voituresMoinsTrajets.get(0);
-        }
-
-        // Priorite carburant seulement apres capacite + nb trajets.
-        List<Voiture> voituresDiesel = voituresMoinsTrajets.stream()
-                .filter(Voiture::estDiesel)
-                .collect(Collectors.toList());
-
-        if (!voituresDiesel.isEmpty()) {
-            return choisirVoitureDeterministe(voituresDiesel);
-        }
-
-        return choisirVoitureDeterministe(voituresMoinsTrajets);
-    }
-
-    private Voiture choisirVoitureDeterministe(List<Voiture> voitures) {
-        return voitures.stream()
-                .min(Comparator
-                        .comparing((Voiture v) -> v.getId() != null ? v.getId() : Integer.MAX_VALUE)
-                        .thenComparing(v -> v.getNumero() != null ? v.getNumero() : ""))
-                .orElse(null);
-    }
-
-    private LocalDateTime calculerHeureDepartEffectiveGroupe(
-            LocalDateTime heureDepartTheorique,
-            List<Reservation> reservationsOrdonnees,
-            Map<Voiture, EtatVoiture> etatsVoitures) {
-        if (heureDepartTheorique == null || reservationsOrdonnees == null || reservationsOrdonnees.isEmpty()) {
-            return heureDepartTheorique != null ? heureDepartTheorique : LocalDateTime.now();
-        }
-
-        int plusGrandeDemande = reservationsOrdonnees.stream()
-                .mapToInt(this::getNombrePassagers)
-                .max()
-                .orElse(0);
-
-        if (plusGrandeDemande <= 0) {
-            return heureDepartTheorique;
-        }
-
-        LocalDateTime meilleureDisponibilite = etatsVoitures.entrySet().stream()
-                .filter(e -> e.getKey() != null && e.getKey().getCapacite() >= plusGrandeDemande)
-                .map(e -> calculerDisponibiliteVoitureDepuis(e.getKey(), e.getValue(), heureDepartTheorique))
-                .min(LocalDateTime::compareTo)
-                .orElse(heureDepartTheorique);
-
-        return meilleureDisponibilite.isAfter(heureDepartTheorique)
-                ? meilleureDisponibilite
-                : heureDepartTheorique;
-    }
-
     private LocalDateTime calculerDisponibiliteVoitureDepuis(
             Voiture voiture,
             EtatVoiture etat,
@@ -799,7 +766,6 @@ public class PlanificationService {
         try {
             return LocalTime.parse(valeur, DateTimeFormatter.ofPattern("HH:mm:ss"));
         } catch (Exception ignored) {
-            // Continuer avec HH:mm
         }
 
         try {
@@ -822,8 +788,6 @@ public class PlanificationService {
         String valeur = heureDisponibilite.trim();
         LocalTime heureReservation = horaireReservation.toLocalTime();
 
-        // Regle metier: heure de disponibilite = heure quotidienne (pas de date fixe)
-        // Donc meme si une date est fournie, on ne compare que l'heure.
         if (valeur.contains("-") || valeur.contains("T") || valeur.contains(" ")) {
             LocalTime heureDepuisDateHeure = extraireHeureDepuisDateHeure(valeur);
             if (heureDepuisDateHeure != null) {
@@ -835,14 +799,12 @@ public class PlanificationService {
             LocalTime heure = LocalTime.parse(valeur, DateTimeFormatter.ofPattern("HH:mm:ss"));
             return !heureReservation.isBefore(heure);
         } catch (Exception ignored) {
-            // Continuer avec HH:mm
         }
 
         try {
             LocalTime heure = LocalTime.parse(valeur, DateTimeFormatter.ofPattern("HH:mm"));
             return !heureReservation.isBefore(heure);
         } catch (Exception ignored) {
-            // Format inconnu: ne pas bloquer toute planification
             return true;
         }
     }
@@ -884,12 +846,12 @@ public class PlanificationService {
                 int affectes = passagersAffectesParReservation.getOrDefault(r.getId(), 0);
                 int restants = Math.max(0, total - affectes);
                 if (restants > 0) {
-                return clonerReservationAvecPassagers(r, restants);
+                    return clonerReservationAvecPassagers(r, restants);
                 }
                 return null;
             })
             .filter(r -> r != null)
-                .collect(Collectors.toList());
+            .collect(Collectors.toList());
     }
 
     public List<Planification> regenerateAndSavePlanification(LocalDate date) throws SQLException {

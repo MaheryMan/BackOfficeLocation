@@ -84,3 +84,15 @@ Quand une date est selectionnee:
 ## 9. Reservations Sans Voiture
 
 Une reservation est consideree "sans voiture" si son ID n'apparait dans aucune planification generee.
+
+## 10. Mise a jour Sprint 8 (Complement sans remplacer l'ancienne priorite)
+
+Cette section ajoute la logique recente, sans changer les priorites de base deja definies ci-dessus.
+
+1. Une voiture qui revient a l'aeroport devient active immediatement.
+2. Elle regarde d'abord les reservations en attente (non assignees).
+3. Elle peut aussi integrer les nouvelles arrivees dans les 30 minutes suivant son retour.
+4. Si la voiture atteint sa capacite maximale avant la fin des 30 minutes, elle part immediatement.
+5. Le remplissage optimise est conserve (gros groupes puis maximum inferieur).
+
+En pratique, l'ancienne priorite reste valable; Sprint 8 ajoute une priorite operationnelle de reactivite au retour des vehicules.

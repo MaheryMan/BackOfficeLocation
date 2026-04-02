@@ -41,7 +41,7 @@ INSERT INTO hotel (nom, id_lieu) VALUES
 -- ---------------------------------------------------------
 -- Graphe complet entre les 4 lieux (chaque paire est reliee)
 INSERT INTO distance (from_id_lieu, to_id_lieu, distance) VALUES
-    (1, 2, 14.0),
+    (1, 2, 25),
     (1, 3, 17.0),
     (1, 4, 16.0),
     (2, 3, 5.0),
@@ -51,11 +51,9 @@ INSERT INTO distance (from_id_lieu, to_id_lieu, distance) VALUES
 -- ---------------------------------------------------------
 -- Flotte de voitures
 -- ---------------------------------------------------------
-INSERT INTO voiture (numero, id_type_energie, capacite) VALUES
-    ('V001', 1, 4),
-    ('V002', 2, 6),
-    ('V003', 1, 8),
-    ('V004', 2, 12);
+INSERT INTO voiture (numero, id_type_energie, capacite, heure_disponibilite) VALUES
+    ('V001', 1, 4, '06:00:00');
+ 
 
 -- ---------------------------------------------------------
 -- Clients
